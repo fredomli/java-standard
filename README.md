@@ -22,4 +22,4 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 # 依赖部分
 
 ## Markdown语法
-* Markdown语法查考此处[markdown address](https://github.com/fredomli/java-standard/blob/main/docs/markdown/markdown.md)
+* Markdown语法基本使用[markdown address](https://github.com/fredomli/java-standard/blob/main/docs/markdown/markdown.md)
