@@ -4,7 +4,7 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 接下来系统的总结自己的所学，深入了解技术的底层实现和背后的故事吧。  
 
 # Java基础部分
-
+* [Java程序设计概述](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/Java程序设计概述.md)
 ## Java 基础知识
 
 ## Java 核心技术
