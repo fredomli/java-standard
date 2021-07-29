@@ -3,7 +3,7 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 
 接下来系统的总结自己的所学，深入了解技术的底层实现和背后的故事吧。  
 
-# 分类
+# Java基础部分
 
 ## Java 基础知识
 
@@ -18,3 +18,8 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 ## Java 设计模式
 
 ## Java版数据结构与算法
+
+# 依赖部分
+
+## Markdown语法
+* Markdown语法查考此处[markdown address](https://github.com/fredomli/java-standard/blob/main/docs/markdown/markdown.md)
