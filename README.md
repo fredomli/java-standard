@@ -22,7 +22,7 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 > 任何计算机使用者都希望计算机运行得更快一些或是能解决更大规模的问题。参考
 (☞ﾟヮﾟ)☞ [数据结构和算法](https://github.com/fredomli/java-standard/blob/main/docs/java/algorithm/readme.md)  
 
-* [算法在程序设计中的作用]()
+* [数据结构的基本概念](https://github.com/fredomli/java-standard/docs/java/structure/description/数据结构的基本概念.md)
 
 
 算法是问题的解决方案，这个解决方案本身并不是问题的答案，而是能获得答案的指令序列。对于许多实际的问题，写出一个正确的算法还不够，如果这个算法在规模较大的数据集上运行，那么运行效率就成为一个重要的问题。 在选择和设计算法时要有效率的概念，这一点比提高计算机本身的速度更为重要（比如排序问题）。
