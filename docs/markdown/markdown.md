@@ -466,7 +466,7 @@ learn in **[Fredomli Go](https://fredomli.com)**
 ![image title](/path/xxx.png "iamge tag")
 ```
 **呈现效果如下所示：**
-> ![image title](/background/bg.jpg "iamge tag")
+> ![image title](/java-standard/pics/actor.png "iamge tag")
 
 ### 链接图像
 要向图像添加链接，请将图像的markdown括在方括号中，然后在括号中添加链接。
