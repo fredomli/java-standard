@@ -10,6 +10,24 @@ Java是目前用户最多、使用范围最广的软件开发技术，Java的技
 ### Java 核心技术（高级特性）
 
 ### Java 虚拟机
+``` 
+注释： 以下内容摘自Java虚拟机规范  
+
+Java 虚拟机是 Java 平台的基石。它是技术的组成部分，负责其硬件和操作系统的独立性、编译代码的小尺寸以及保护用户免受恶意程序侵害的能力。
+
+Java 虚拟机是一个抽象的计算机器。像真正的计算机器一样，它有一个指令集并在运行时操纵各种内存区域。使用虚拟机实现编程语言是相当普遍的。最著名的虚拟机可能是 UCSD Pascal 的 P-Code 机器。
+
+Java 虚拟机的第一个原型实现是在 Sun Microsystems, Inc. 完成的，它模拟了由类似于当代个人数字助理 (PDA) 的手持设备托管的软件中的 Java 虚拟机指令集。Oracle 当前的实现在移动、桌面和服务器设备上模拟 Java 虚拟机，但 Java 虚拟机不假定任何特定的实现技术、主机硬件或主机操作系统。它不是固有的解释，但也可以通过将其指令集编译为硅 CPU 的指令集来实现。它也可以在微代码中或直接在硅中实现。
+
+Java 虚拟机对 Java 编程语言一无所知，只知道一种特定的二进制格式，即class文件格式。一个class文件包含的Java虚拟机指令（或字节码）和符号表，以及其它辅助信息。
+
+为了安全起见，Java 虚拟机对class文件中的代码施加了很强的语法和结构约束。但是，任何具有可以用有效class文件表示的功能的语言都可以由 Java 虚拟机托管。被普遍可用的、独立于机器的平台所吸引，其他语言的实现者可以将 Java 虚拟机作为他们语言的交付工具。
+```
+
+*更多详细信息可以参考* [虚拟机规范](https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-1.html#jvms-1.1) 
+
+* [深入理解Java虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/java/jvm/readme.md)
+* [Java内存区域与内存溢出异常](https://github.com/fredomli/java-standard/blob/main/docs/java/jvm/memory/Java内存区域.md)
 
 ### Java 并发编程
 
@@ -41,6 +59,7 @@ ______
 * [Markdown语法基本使用](https://github.com/fredomli/java-standard/blob/main/docs/markdown/markdown.md)
 * [Git-分布式版本控制](https://git-scm.com/doc)
 * [集成开发环境-IntelliJ IDEA](https://www.jetbrains.com/)
+* [Java语言和虚拟机规范](https://docs.oracle.com/javase/specs/index.html)  
 
 ## 参考书籍
 ```markdown
