@@ -13,9 +13,9 @@ Java具备所有以上的特性，它是一种功能齐全的出色语言，是�
 * [Java“白皮书”的关键术语](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/Java白皮书关键术语.md)  
 * [Java发展简史](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/Java发展简史.md)
 * [Java常见误解](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
-## 注意
-
-*内容来源*：***《Java核心技术卷一》***  
+## 参考资料
+* ***《Java核心技术卷一》***
+* [Java语言规范](https://docs.oracle.com/javase/specs/jls/se8/html/index.html)
 
 ___________
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*

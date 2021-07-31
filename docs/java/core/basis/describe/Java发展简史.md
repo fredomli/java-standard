@@ -12,8 +12,9 @@ Java的历史要追溯到1991年，由Patrick Naughton和 James Gosling（一个
 
 ✔ 内容待定...
 
-## 注意
-*内容来源*：***《Java核心技术卷一》***
+## 参考资料
+* ***《Java核心技术卷一》***
+* [Java语言规范](https://docs.oracle.com/javase/specs/jls/se8/html/index.html)
 
 ___________
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
