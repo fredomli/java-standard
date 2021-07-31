@@ -59,9 +59,9 @@ Oracle公司为Linux、Mac OS、Solaris和Windows提供了最新、最完备的J
 
 ### 设置JDK  
 
-下载JDK之后，需要安装这个开发工具包并明确要安装在哪里，后面还会需要这个信息。  
+#### 下载JDK之后，需要安装这个开发工具包并明确要安装在哪里，后面还会需要这个信息。  
 
-
+* 在Windows上，启动安装程序，会询问你要在哪里安装JDK。最好不要接受路径名中包含<span style="color=red;">空格</span>的默认位置，如`c:\Program Files\Java\Jdk-11.0.x.x`。取出路径名中的Program Files部分就可以了。
 
 ## 使用命令行工具
 
