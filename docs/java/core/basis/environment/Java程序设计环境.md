@@ -61,13 +61,41 @@ Oracle公司为Linux、Mac OS、Solaris和Windows提供了最新、最完备的J
 
 #### 下载JDK之后，需要安装这个开发工具包并明确要安装在哪里，后面还会需要这个信息。  
 
-* 在Windows上，启动安装程序，会询问你要在哪里安装JDK。最好不要接受路径名中包含<span style="color=red;">空格</span>的默认位置，如`c:\Program Files\Java\Jdk-11.0.x.x`。取出路径名中的Program Files部分就可以了。
+* 在Windows上，启动安装程序，会询问你要在哪里安装JDK。最好不要接受路径名中包含 <span style="color:red;">空格</span> 的默认位置，如`c:\Program Files\Java\Jdk-11.0.x.x`。取出路径名中的Program Files部分就可以了。
+* 在Mac上，运行安装程序。这会把软件安装到`/Library/Java/JavaVirtuaLMachines/jdk-11.0.x.jdk/Contents/Home`。用查找功能找到这个目录。
+* 在Linux上，只需要把.tar.gz文件解压缩到你选择的某个位置，如你的主目录，或者/opt。如果从RPM文件安装，则要反复检查是否安装在/usr/java/jdk-11.0.x上。
 
-## 使用命令行工具
+> 在windows或Linux上安装JDK时，还需要另外完成一个步骤：将jdk/bin目录添加到可执行路径中——可执行路径是操作系统查找可执行文件时所遍历的目录列表。  
 
-## 使用集群开发环境
+* 在Linux中，需要在~/.bashrc或~/.bash_profile文件的最后增加这样一行：
+> export PATH=jdk/bin:$PATH  
 
-## JShell
+* 在Windows 10中，在Windows Settings的搜索栏中键入<span style="color:green;">environment（环境）</span>选择Edit environment variables for your account(<span style="color:green;">编辑系统环境变量</span>)。会出现一个Environment Variables（环境变量）对话框。在User Variables（用户变量）列表中找到并选择一个名为Path的变量。点击Edit（编辑）按钮，再点击New按钮，增加一个变量，值为jdk\bin目录。  
+
+保存所做的设置。之后新打开的所有命令提示窗口都会有正确的路径。  
+
+**测试设置是否正确：**  
+```shell
+javac --version | javac -version
+```
+然后按回车键。应该能看到显示以下信息：  
+```shell
+javac 1.8.x_xxx
+```
+如果得到诸如"javac:command not found" (javac: 命令未找到)或 “The name specified is not recognized as an internal or external command, operable program or batch file” 
+（指定名不是一个内部或外部命令、可执行的程序或批文件）的信息，就需要退回去反复检查你的安装。  
+
+
+![https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/environment-java-jdk.png](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/environment-java-jdk.png)
+![https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/environment-config.png](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/environment-config.png)
+<span style="color:red;"></span>
+
+## 扩展  
+* [安装库源文件和文档](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
+* [使用命令行工具](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
+* [使用集群开发环境](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
+* [JShell](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
+
 
 ## 参考资料
 
