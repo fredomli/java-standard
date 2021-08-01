@@ -91,10 +91,10 @@ javac 1.8.x_xxx
 <span style="color:red;"></span>
 
 ## 扩展  
-* [安装库源文件和文档](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
-* [使用命令行工具](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
-* [使用集群开发环境](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
-* [JShell](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)
+* [安装库源文件和文档](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/安装库源文件和文档.md)
+* [使用命令行工具](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/使用命令行工具.md)
+* [使用集群开发环境](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/使用集成开发环境.md)
+* [JShell](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/JShell.md)
 
 
 ## 参考资料
@@ -102,7 +102,9 @@ javac 1.8.x_xxx
 * ***《Java核心技术卷一》***  
 * [Java语言规范](https://docs.oracle.com/javase/specs/jls/se8/html/index.html)  
 ```
-注意：项目使用的Java版本为Java8，所选用的资料为Java8版本以上。
+注意：  
+1. 项目使用的Java版本为Java8，所选用的资料为Java8版本以上。
+2. 实例源码目录：`java-standard\java-source\horstmann\corejava`
 ```
 
 
