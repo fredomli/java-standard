@@ -57,7 +57,8 @@ java FirstSample
 
 > 注释: System.out 还有一个 print 方法，它不在输出之后增加换行符。
 
-
+## 其他  
+* [Java注解](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/simple/Java注解.md)
 
 ## 参考资料
 * ***《Java核心技术卷一》***
