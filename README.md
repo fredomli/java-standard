@@ -16,7 +16,11 @@ Java 编程语言是一种相对高级的语言，因为无法通过该语言获
 * [使用命令行工具](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/使用命令行工具.md)
 * [使用集群开发环境](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/使用集成开发环境.md)
 * [JShell](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/environment/JShell.md)
+#### 3. [Java的基本程序设计结构](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/simple/Java的基本程序设计结构.md)
 
+#### 4. [Java对象与类](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/object/对象与类.md)
+
+#### 5. [Java继承](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/extends/Java继承.md)
 ### Java 核心技术（高级特性）
 
 ### Java 虚拟机
