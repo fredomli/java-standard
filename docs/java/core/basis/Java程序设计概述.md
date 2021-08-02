@@ -10,6 +10,8 @@ Java并不只是一门语言。在此之前出现的那么多种语言都没有�
 
 Java具备所有以上的特性，它是一种功能齐全的出色语言，是一个高质量的执行环境，还提供了一个庞大的库。正是因为它集多种优势于一身，所以对广大的程序设计人员有着不可抗拒的吸引力。
 
+#### Java概念图描述
+![https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/description-of-Java-conceptual-diagram.png](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/description-of-Java-conceptual-diagram.png)
 * [Java“白皮书”的关键术语](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/Java白皮书关键术语.md)  
 * [Java发展简史](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/Java发展简史.md)
 * [Java常见误解](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/describe/关于Java的常见误解.md)

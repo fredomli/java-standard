@@ -59,6 +59,7 @@ java FirstSample
 
 ## 其他  
 * [Java注解](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/simple/Java注解.md)
+* [Java基本数据类型](https://github.com/fredomli/java-standard/blob/main/docs/java/core/basis/simple/Java基本数据类型.md)
 
 ## 参考资料
 * ***《Java核心技术卷一》***

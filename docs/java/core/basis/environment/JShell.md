@@ -1,7 +1,8 @@
 # JShell工具
 
+> 我们已经知道如何编一个一个程序。Java9中引入另一种使用Java的方式。JShell程序提供了一个“读取-计算-打印循环”（Read-Evaluate-Print Loop,REPL）。键入一个Java表达式；JShell会评估你的输入，打印结果，等待你的下一个输入。
 
-
+#### 要启动JShell，只需要在终端窗口中键入`jshell`。
 
 
 
