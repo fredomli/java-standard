@@ -35,5 +35,7 @@
 
 
 *这样我们就可以将图片保存在自己的创库中，也不用担心有一天自己的图库因为三方问题而遗失。*  
+### 扩展  
+* [OSS方式搭建图床](https://github.com/fredomli/java-standard/blob/main/docs/utils/使用oss和picgo搭建图床.md)
 
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
