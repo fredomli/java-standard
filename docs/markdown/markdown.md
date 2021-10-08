@@ -501,3 +501,10 @@ learn in **[Fredomli Go](https://fredomli.com)**
 |.|点|
 |!|感叹号|
 |\||管道|
+
+
+___  
+#### Markdown 中文网
+[http://markdown.p2hp.com/](http://markdown.p2hp.com/)  
+
+*(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
