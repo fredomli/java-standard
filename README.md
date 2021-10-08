@@ -95,7 +95,7 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [Git-分布式版本控制](https://git-scm.com/doc)
 * [集成开发环境-IntelliJ IDEA](https://www.jetbrains.com/)
 * [Java语言和虚拟机规范](https://docs.oracle.com/javase/specs/index.html)  
-
+* [图床工具](https://github.com/fredomli/java-standard/blob/main/docs/utils/使用gitee和picgo搭建图床.md)
 ## 参考书籍
 ```markdown
  ・Java编程思想
