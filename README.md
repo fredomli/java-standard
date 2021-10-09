@@ -83,6 +83,10 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 #### Mybatis Generator
 * [Mybatis Generator的使用](https://github.com/fredomli/java-standard/blob/main/docs/mybatis/generator/readme.md)
 
+### Mybatis-Plus  
+#### Mybatis-Plus AutoGenerator  
+* [Mybatis-Plus AutoGenerator的使用](https://github.com/fredomli/java-standard/blob/main/docs/mybatis/mybatisplus/generator/readme.md)
+
 ## 技术栈
 
 * Java
