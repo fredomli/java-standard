@@ -74,11 +74,17 @@ ______
 Java Web，是用Java技术来解决相关Web互联网领域的技术栈。Web包括: web服务器和web客户端两部分。Java在客户端还有
 Java Applet,不过现在已经很少使用，JavaScript完全取代了它的作用。Java在服务器端的应用非常丰富，比如Servlet，JSP、等第三方框架等等。
 
+
 ## Java 企业开发（Java EE）
 ### 简介
 Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家清楚J2EE只是Java企业应用。在2004年底中国软件技术大会Ioc微容器（也就是Jdon框架的实现原理）演讲中指出：我们需要一个跨J2SE/WEB/EJB的微容器，保护我们的业务核心组件（中间件），以延续它的生命力，而不是依赖J2SE/J2EE版本。
 
-这是比较官方的解释，可以从不同Java应用方向相互比较，Java SE > Java Web > Java EE。
+这是比较官方的解释，可以从不同Java应用方向相互比较，Java SE > Java Web > Java EE。 
+
+### Spring Security 
+* [Spring Security的使用](https://github.com/fredomli/java-standard/blob/main/docs/spring/security/readme.md)
+
+
 ### Mybatis
 #### Mybatis Generator
 * [Mybatis Generator的使用](https://github.com/fredomli/java-standard/blob/main/docs/mybatis/generator/readme.md)
