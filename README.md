@@ -80,6 +80,9 @@ Java Applet,不过现在已经很少使用，JavaScript完全取代了它的作�
 Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家清楚J2EE只是Java企业应用。在2004年底中国软件技术大会Ioc微容器（也就是Jdon框架的实现原理）演讲中指出：我们需要一个跨J2SE/WEB/EJB的微容器，保护我们的业务核心组件（中间件），以延续它的生命力，而不是依赖J2SE/J2EE版本。
 
 这是比较官方的解释，可以从不同Java应用方向相互比较，Java SE > Java Web > Java EE。 
+### Spring
+* [使用SpringInitializr创建项目.md](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/使用SpringInitializr创建项目.md)  
+
 
 ### Spring Security 
 * [Spring Security的使用](https://github.com/fredomli/java-standard/blob/main/docs/spring/security/readme.md)
