@@ -114,6 +114,261 @@ public class Application {
 
 @SpringBootApplication是一个方便的注释，它添加了以下所有内容:
 * @Configuration:将类标记为应用程序上下文的bean定义的源。
+* @EnableAutoConfiguration:告诉Spring Boot开始添加基于类路径设置、其他bean和各种属性设置的bean。例如，如果spring-webmvc在类路径上，这个注释将把应用程序标记为web应用程序，并激活关键行为，例如设置DispatcherServlet。
+* @ComponentScan:告诉Spring在com/example包中寻找其他组件、配置和服务，让它找到控制器。
+
+main()方法使用Spring Boot的SpringApplication.run()方法来启动应用程序。您注意到没有任何一行XML吗?也没有web.xml文件。这个web应用程序是100%纯Java的，你不需要配置任何管道或基础设施。
+
+还有一个标记为@Bean的CommandLineRunner方法，它在启动时运行。它检索由应用程序创建的或由Spring Boot自动添加的所有bean。它把它们分类并打印出来。  
+
+### 构建与运行应用程序
+要运行该应用程序，请在终端窗口(完整)目录下运行以下命令:  
+
+```text
+./gradlew bootRun
+```
+
+如果您使用Maven，请在终端窗口(完整)目录中运行以下命令:  
+```text
+./mvnw spring-boot:run
+```
+你应该看到类似如下的输出:  
+
+```text
+Let's inspect the beans provided by Spring Boot:
+application
+beanNameHandlerMapping
+defaultServletHandlerMapping
+dispatcherServlet
+embeddedServletContainerCustomizerBeanPostProcessor
+handlerExceptionResolver
+helloController
+httpRequestHandlerAdapter
+messageSource
+mvcContentNegotiationManager
+mvcConversionService
+mvcValidator
+org.springframework.boot.autoconfigure.MessageSourceAutoConfiguration
+org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration$DispatcherServletConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration$EmbeddedTomcat
+org.springframework.boot.autoconfigure.web.ServerPropertiesAutoConfiguration
+org.springframework.boot.context.embedded.properties.ServerProperties
+org.springframework.context.annotation.ConfigurationClassPostProcessor.enhancedConfigurationProcessor
+org.springframework.context.annotation.ConfigurationClassPostProcessor.importAwareProcessor
+org.springframework.context.annotation.internalAutowiredAnnotationProcessor
+org.springframework.context.annotation.internalCommonAnnotationProcessor
+org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+org.springframework.context.annotation.internalRequiredAnnotationProcessor
+org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration
+propertySourcesBinder
+propertySourcesPlaceholderConfigurer
+requestMappingHandlerAdapter
+requestMappingHandlerMapping
+resourceHandlerMapping
+simpleControllerHandlerAdapter
+tomcatEmbeddedServletContainerFactory
+viewControllerHandlerMapping
+```
+您可以清楚地看到`org.springframework.boot.autoconfigure bean`。还有一个`tomcatEmbeddedServletContainerFactory`。
+
+现在使用curl运行服务(在一个单独的终端窗口中)，运行以下命令(显示其输出):
+
+```text
+$ curl localhost:8080
+Greetings from Spring Boot!
+```
+### 添加单元测试
+您可能希望为添加的端点添加一个测试，而Spring test为此提供了一些机制。
+
+如果你使用的是Gradle，请在你的构建中添加以下依赖项。gradle文件:
+
+```text
+testImplementation('org.springframework.boot:spring-boot-starter-test')
+```
+
+如果你使用Maven，在你的pom.xml文件中添加以下内容:
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-test</artifactId>
+	<scope>test</scope>
+</dependency>
+```
+现在编写一个简单的单元测试，通过端点模拟servlet请求和响应，如下所示(来自src/test/java/com/example/springboot/HelloControllerTest.java):
+
+```java
+package com.example.springboot;
+
+import static org.hamcrest.Matchers.equalTo;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class HelloControllerTest {
+
+	@Autowired
+	private MockMvc mvc;
+
+	@Test
+	public void getHello() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.get("/").accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andExpect(content().string(equalTo("Greetings from Spring Boot!")));
+	}
+}
+```
+MockMvc来自Spring Test，它允许您通过一组方便的构建器类将HTTP请求发送到DispatcherServlet，并对结果进行断言。注意使用@AutoConfigureMockMvc和@SpringBootTest来注入MockMvc实例。使用@SpringBootTest,我们要求创建整个应用程序上下文。另一种选择是要求Spring Boot使用@WebMvcTest只创建上下文的web层。在这两种情况下，Spring Boot都会自动尝试定位应用程序的主应用程序类，但是如果您想构建一些不同的东西，可以覆盖它或缩小它的范围。
+
+除了模拟HTTP请求周期外，您还可以使用Spring Boot编写一个简单的全栈集成测试。例如，我们可以创建以下测试(来自src/test/java/com/example/springboot/HelloControllerIT.java)，而不是前面显示的模拟测试:
+
+```java
+package com.example.springboot;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.ResponseEntity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class HelloControllerIT {
+
+	@Autowired
+	private TestRestTemplate template;
+
+    @Test
+    public void getHello() throws Exception {
+        ResponseEntity<String> response = template.getForEntity("/", String.class);
+        assertThat(response.getBody()).isEqualTo("Greetings from Spring Boot!");
+    }
+}
+```
+由于webEnvironment = SpringBootTest.WebEnvironment，嵌入式服务器在一个随机端口上启动。RANDOM_PORT，实际的端口在teststtemplate的基础URL中自动配置。
+
+### 添加产品级服务
+
+如果你正在为你的企业建立一个网站，你可能需要添加一些管理服务。Spring Boot通过其执行器模块提供了几个这样的服务(如运行状况、审计、bean等)。
+
+如果你使用的是Gradle，请在你的构建中添加以下依赖项。gradle文件:
+
+```text
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+```
+
+如果你使用Maven，请将以下依赖项添加到pomo .xml文件中:  
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+然后重新启动应用程序。如果你使用Gradle，在终端窗口中(在完整目录中)运行以下命令:
+```text
+./gradlew bootRun
+```
+如果您使用Maven，请在终端窗口中(在完整目录中)运行以下命令:
+```xml
+./mvnw spring-boot:run
+```
+您应该会看到，应用程序中添加了一组新的RESTful端点。这些是由Spring Boot提供的管理服务。下面的清单显示了典型的输出:
+```text
+management.endpoint.configprops-org.springframework.boot.actuate.autoconfigure.context.properties.ConfigurationPropertiesReportEndpointProperties
+management.endpoint.env-org.springframework.boot.actuate.autoconfigure.env.EnvironmentEndpointProperties
+management.endpoint.health-org.springframework.boot.actuate.autoconfigure.health.HealthEndpointProperties
+management.endpoint.logfile-org.springframework.boot.actuate.autoconfigure.logging.LogFileWebEndpointProperties
+management.endpoints.jmx-org.springframework.boot.actuate.autoconfigure.endpoint.jmx.JmxEndpointProperties
+management.endpoints.web-org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties
+management.endpoints.web.cors-org.springframework.boot.actuate.autoconfigure.endpoint.web.CorsEndpointProperties
+management.health.diskspace-org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties
+management.info-org.springframework.boot.actuate.autoconfigure.info.InfoContributorProperties
+management.metrics-org.springframework.boot.actuate.autoconfigure.metrics.MetricsProperties
+management.metrics.export.simple-org.springframework.boot.actuate.autoconfigure.metrics.export.simple.SimpleProperties
+management.server-org.springframework.boot.actuate.autoconfigure.web.server.ManagementServerProperties
+```
+#### 执行器公开以下内容:
+* actuator/health(http://localhost:8080/actuator/health)
+* actuator
+
+还有一个/actuator/shutdown端点，但默认情况下，它仅通过JMX可见。要将其启用为HTTP端点，请添加management.endpoint.shutdown=true。属性文件并使用management.endpoints.web.exposure.include=health,info,shutdown。但是，您可能不应该为公开可用的应用程序启用关闭端点。  
+
+可以运行以下命令检查应用程序的运行状况:
+```shell
+$ curl localhost:8080/actuator/health
+{"status":"UP"}
+```
+
+您还可以尝试通过curl调用shutdown，以查看当您没有向application.properties添加必要的行(如前面的注释所示)时会发生什么:
+
+```shell
+$ curl -X POST localhost:8080/actuator/shutdown
+{"timestamp":1401820343710,"error":"Not Found","status":404,"message":"","path":"/actuator/shutdown"}
+```
+因为我们没有启用它，所以请求的端点不可用(因为端点不存在)。
+有关每个REST端点的详细信息，以及如何使用应用程序调优它们的设置。属性文件(在src/main/resources中)，请参阅关于端点的文档。
+
+### 查看Spring Boot的启动器
+
+您已经看到了Spring Boot的一些“启动器”。你可以在源代码中看到它们。
+
+### JAR支持和Groovy支持
+最后一个示例展示了Spring Boot如何让您连接您可能不知道自己需要的bean。它还展示了如何开启便捷的管理服务。
+然而，Spring Boot做的不止这些。由于Spring Boot的加载器模块，它不仅支持传统的WAR文件部署，还允许将可执行jar放在一起。各种指南通过spring-boot-gradle-plugin和spring-boot-maven-plugin演示了这种双重支持。
+
+
+除此之外，Spring Boot还支持Groovy，让您可以用一个简单的文件构建Spring MVC web应用程序。
+
+创建一个名为app.groovy的新文件，并放入以下代码:
+
+```groovy
+@RestController
+class ThisWillActuallyRun {
+
+    @GetMapping("/")
+    String home() {
+        return "Hello, World!"
+    }
+
+}
+```
+
+文件在哪里并不重要。你甚至可以在一条tweet中安装这么小的应用程序!
+
+接下来，安装Spring Boot的CLI。  
+运行以下命令运行Groovy应用程序:
+
+> Spring Boot CLI(命令行接口)是一个命令行工具，您可以使用它来快速创建Spring的原型。它允许您运行Groovy脚本，这意味着您有一个熟悉的类似java的语法，而没有太多的样板代码。
+您不需要使用CLI来使用Spring Boot，但这是在没有IDE的情况下启动Spring应用程序的一种快速方法。
+
+```shell
+$ spring run app.groovy
+```
+关闭之前的应用程序，以避免端口冲突。
+
+从一个不同的终端窗口，运行以下curl命令(显示其输出):
+```shell
+$ curl localhost:8080
+Hello, World!
+```
+Spring Boot通过在代码中动态添加关键注释，并使用Groovy Grape下拉运行应用程序所需的库来实现这一点。
+#### 总结
+恭喜你!您使用Spring Boot构建了一个简单的web应用程序，并了解了它如何提高您的开发速度。您还打开了一些方便的生产服务。这只是Spring Boot功能的一小部分示例。更多信息请参见[Spring Boot的在线文档](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/) 。
 > 参阅
 > * [使用Spring MVC服务Web内容](https://spring.io/guides/gs/serving-web-content/)
 > * [Spring安全架构(参考指南)](https://spring.io/guides/topicals/spring-security-architecture/)
