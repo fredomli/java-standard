@@ -51,7 +51,7 @@ Spring IoC容器管理一个或多个bean。这些bean是使用您提供给容�
 然而，在实际定义bean的地方指定所有别名并不总是足够的。有时需要为别处定义的bean引入别名。这种情况在大型系统中很常见，其中配置在每个子系统之间被分割，每个子系统都有自己的一组对象定义。在基于xml的配置元数据中，可以使用<alias/>元素来完成此任务。下面的例子展示了如何做到这一点:
 
 ```xml
-<alias name="fromName" alias="toName"/>s
+<alias name="fromName" alias="toName"/>
 ```
 
 在这种情况下，一个名为fromName的bean(在同一个容器中)也可以在使用了这个别名定义之后被称为toName。
