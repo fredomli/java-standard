@@ -107,10 +107,79 @@ ApplicationContext context = new ClassPathXmlApplicationContext("services.xml", 
 ```
 > 在了解了Spring的IoC容器之后，您可能想了解更多关于Spring的Resource抽象(如参考资料中所述)的信息，它提供了一种方便的机制，可以从URI语法中定义的位置读取InputStream。特别是，资源路径用于构造应用程序上下文，如应用程序上下文和资源路径中所述。
 
+以下示例显示了服务层对象(services.xml)配置文件:  
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- services -->
+
+    <bean id="petStore" class="org.springframework.samples.jpetstore.services.PetStoreServiceImpl">
+        <property name="accountDao" ref="accountDao"/>
+        <property name="itemDao" ref="itemDao"/>
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <!-- more bean definitions for services go here -->
+
+</beans>
+```
+
+下面的示例展示了数据访问对象dao .xml文件:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="accountDao"
+        class="org.springframework.samples.jpetstore.dao.jpa.JpaAccountDao">
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <bean id="itemDao" class="org.springframework.samples.jpetstore.dao.jpa.JpaItemDao">
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <!-- more bean definitions for data access objects go here -->
+
+</beans>
+```
+在前面的示例中，服务层由PetStoreServiceImpl类和两个类型为JpaAccountDao和JpaItemDao的数据访问对象组成(基于JPA对象-关系映射标准)。property name元素引用JavaBean属性的名称，ref元素引用另一个bean定义的名称。id和ref元素之间的这种链接表示协作对象之间的依赖关系。有关配置对象依赖项的详细信息，请参见依赖项。
+
+### 组合基于xml的配置元数据
+让bean定义跨越多个XML文件可能很有用。通常，每个XML配置文件代表体系结构中的逻辑层或模块。
+
+您可以使用应用程序上下文构造函数从所有这些XML片段加载bean定义。这个构造函数接受多个Resource位置，如上一节所示。或者，使用<import/>元素的一次或多次出现来从另一个或多个文件加载bean定义。下面的例子展示了如何做到这一点:
+
+```xml
+<beans>
+    <import resource="services.xml"/>
+    <import resource="resources/messageSource.xml"/>
+    <import resource="/resources/themeSource.xml"/>
+
+    <bean id="bean1" class="..."/>
+    <bean id="bean2" class="..."/>
+</beans>
+```
+
+在前面的示例中，外部bean定义从三个文件加载:services.xml、messageSource.xml和themeSource.xml。所有位置路径都是相对于执行导入的定义文件而言的，因此services.xml必须位于执行导入的文件相同的目录或类路径位置，而messageSource.xml和themeSource.xml必须位于导入文件下方的资源位置。
+
+如您所见，前导斜杠被忽略。但是，考虑到这些路径是相对的，最好完全不使用斜杠。根据Spring Schema，要导入的文件的内容(包括顶级的<beans/>元素)必须是有效的XML bean定义。
+
+> 使用相对的"../”路径。s引用父目录中的文件是可能的，但不推荐使用。这样做会在当前应用程序之外的文件上创建一个依赖项。特别地，这个引用不推荐用于类路径:url(例如，classpath:../services.xml)，运行时解析过程选择“最近的”类路径根，然后查看它的父目录。类路径配置更改可能导致选择不同的、不正确的目录。
+>
+> 您总是可以使用完全限定的资源位置而不是相对路径:例如，file:C:/config/services.xml或classpath:/config/services.xml。但是，请注意，您将应用程序的配置耦合到特定的绝对位置。对于这样的绝对位置，通常最好保持一个间接的位置——例如，通过“${…}”占位符，在运行时根据JVM系统属性解析。
+
+名称空间本身提供了导入指令特性。除了普通bean定义之外，Spring还提供了一些XML名称空间选项，例如上下文和util名称空间。
 
 
-
- 
 
 > 参阅
 > * [使用Spring MVC服务Web内容](https://spring.io/guides/gs/serving-web-content/)
