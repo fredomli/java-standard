@@ -1,6 +1,6 @@
 # Spring 资源处理（Resources）
 
-
+本章介绍Spring如何处理资源，以及如何在Spring中使用资源。
 
 
 
