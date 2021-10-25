@@ -85,8 +85,15 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [Spring框架简介](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/readme.md)
 * [Spring Framework概述](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/readme.md)
 * [Spring核心技术](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/SpringIoc容器.md)
-
-
+* [SpringIoc简介](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/SpringIoc容器.md)
+* [Spring容器使用](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/Spring容器使用.md)
+* [Spring依赖注入](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/Spring依赖注入概述.md)
+* [SpringBean作用域](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/SpringBean作用域.md)
+* [SpringBean-继承](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/SpringBean定义继承.md)
+* [SpringBean自定义属性](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/SpringBean自定义性质.md)
+* [Spring基于注解的容器配置](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/Spring基于注解的容器配置.md)
+* [Spring基于Java的容器配置](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/Spring基于java的容器配置.md)
+* [Spring Environment Abstraction](https://github.com/fredomli/java-standard/blob/main/docs/spring/spring/core/Spring环境抽象.md)
 
 
 ### Spring Security 
@@ -118,6 +125,12 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [Spring参考资料](https://github.com/fredomli/java-standard/blob/main/docs/spring/readme.md)  
 * [Spring官网](https://spring.io/)
 * [Git官方文档](https://git-scm.com/doc)
+* [VM-虚拟机安装](https://github.com/fredomli/java-standard/blob/main/docs/vm/虚拟机安装.md)
+* [Centos镜像下载](https://github.com/fredomli/java-standard/blob/main/docs/vm/Centos系统镜像下载.md)
+* [使用VMware和Centos7创建虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/vm/使用VMware和Centos7创建虚拟机.md)
+* [XShell工具非商业版本](https://github.com/fredomli/java-standard/blob/main/docs/utils/shell/XShell工具学生版.md)
+
+
 ## 参考书籍
 ```markdown
  ・Java编程思想
