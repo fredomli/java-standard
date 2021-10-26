@@ -131,6 +131,8 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [XShell工具非商业版本](https://github.com/fredomli/java-standard/blob/main/docs/utils/shell/XShell工具学生版.md)
 * [centos7安装nginx](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装nginx.md)
 * [Linux安装和介绍](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/Linux安装和介绍.md)
+* [Linux常用命令](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/Linux常用命令.md)
+* [linux下软件的安装与管理](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/linux下软件的安装与管理.md) 
 * [Linux命令大全](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8.pdf)
 
 

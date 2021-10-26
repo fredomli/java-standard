@@ -165,6 +165,7 @@ root     pts/0    192.168.199.1    16:43    7.00s  0.06s  0.02s w
 > * [虚拟机安装](https://github.com/fredomli/java-standard/blob/main/docs/vm/虚拟机安装.md)
 > * [Centos镜像下载](https://github.com/fredomli/java-standard/blob/main/docs/vm/Centos系统镜像下载.md)
 > * [使用VMware和Centos7创建虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/vm/使用VMware和Centos7创建虚拟机.md)
+> * [linux下软件的安装与管理](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/linux下软件的安装与管理.md)
 > * [Linux命令大全](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8.pdf)
 
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
