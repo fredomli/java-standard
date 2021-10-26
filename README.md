@@ -129,6 +129,7 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [Centos镜像下载](https://github.com/fredomli/java-standard/blob/main/docs/vm/Centos系统镜像下载.md)
 * [使用VMware和Centos7创建虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/vm/使用VMware和Centos7创建虚拟机.md)
 * [XShell工具非商业版本](https://github.com/fredomli/java-standard/blob/main/docs/utils/shell/XShell工具学生版.md)
+* [centos7安装nginx](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装nginx.md)
 
 
 ## 参考书籍
