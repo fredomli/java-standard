@@ -233,6 +233,7 @@ httpd -v
 ```
 
 ## 参阅
-[apache官方文档](https://httpd.apache.org/docs/)
+[apache官方文档](https://httpd.apache.org/docs/)  
+[将应用添加为Linux的服务](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/将应用添加为Linux的服务.md)
 
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
