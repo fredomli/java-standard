@@ -217,6 +217,91 @@ systemctl enable nginx
 systemctl disable nginx
 ```
 
+## 将Tomcat添加为Linux服务
+
+1. 将 `tomcat/bin` 下的catalina.sh复制到目录 /etc/init.d 中，并修改名称为tomcat。
+
+2. 修改tomcat文件
+```shell
+vi /etc/init.d/tomcat
+```
+
+3. 在脚本中添加
+```shell
+# chkconfig: 2345 10 90
+# description:Tomcat service
+```
+
+> 备注：第一行是服务的配置：
+>
+>     第一个数字是服务的运行级，2345表明这个服务的运行级是2、3、4和5级（Linux的运行级为0到6）；
+>
+>     第二个数字是启动优先级，数值从0到99；
+>
+>     第三个数是停止优先级，数值也是从0到99。
+>
+> 第二行是对服务的描述
+
+### 在脚本中设置　CATALINA_HOME　和　JAVA_HOME　这两个脚本必需的环境变量，如：
+
+```shell
+CATALINA_HOME=/usr/local/tomcat/apache-tomcat-8.5.72
+JAVA_HOME=/home/xxx/java/jdk1.8.0_291
+```
+
+### 给脚本添加执行权限
+```shell
+chmod 755 /etc/init.d/tomcat
+```
+
+### 用chkconfig来添加到系统服务：
+
+```shell
+chkconfig --add tomcat
+```
+### 用chkconfig查看是否添加成功
+```shell
+chkconfig -- list
+```
+
+### 使用`systemctl start|restart|stop|enable|disable|reload| tomcat`等命令管理服务
+```shell
+systemctl start tomcat
+
+# 查看状态
+systemctl status tomcat
+
+# 停止命令
+systemctl stop tomcat
+
+# 重启命令
+systemctl restart tomcat
+
+# 重新加载配置
+systemctl reload tomcat
+
+# 开机自启
+systemctl enable tomcat
+
+# 关闭开机自己
+systemctl disable tomcat
+```
+
+> 注意Tomcat 和 Java 之间的端口冲突，Tomcat依赖于Java JDK，
+> 
+> 当我们安装好Tomcat之后启动Tomcat，可能会出现启动失败的情况，通过netstat -ntlp查看端口占用情况发现8080已经被使用。
+> 
+> 这时候可以使用 kill 8080 或者 -f 强制杀死进程，然后在重新启动Tomcat，这时候应用启动多半是成功了，但是还是会有问题。
+> 
+> 可能通过客户端访问会没有反应，毕竟依赖的JDK程序已经被kill掉了，这时候重新使得 .bashrc 文件生效。
+> 
+> 使用 source 命令使得 .bashrc 命令生效 ：source /home/user/.bashrc
+
+现在放上一张效果图，如下：
+
+![pc4](https://gitee.com/fredomli/fredomli-picture/raw/picgo/static/images/wordpress/install-tomcat-success.png)
+
+
 
 ## 参阅
 [apache官方文档](https://httpd.apache.org/docs/)
