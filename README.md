@@ -129,11 +129,21 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [Centos镜像下载](https://github.com/fredomli/java-standard/blob/main/docs/vm/Centos系统镜像下载.md)
 * [使用VMware和Centos7创建虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/vm/使用VMware和Centos7创建虚拟机.md)
 * [XShell工具非商业版本](https://github.com/fredomli/java-standard/blob/main/docs/utils/shell/XShell工具学生版.md)
-* [centos7安装nginx](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装nginx.md)
 * [Linux安装和介绍](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/Linux安装和介绍.md)
 * [Linux常用命令](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/Linux常用命令.md)
 * [linux下软件的安装与管理](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/linux下软件的安装与管理.md) 
 * [Linux命令大全](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8.pdf)
+* [Docker基础学习](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/学习Docker基础.md)
+* [centos7安装nginx](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装nginx.md)
+* [centos7安装apache](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装apache.md)
+* [centos7安装docker](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装docker.md)
+* [centos7安装jdk](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装jdk.md)
+* [centos7安装maven](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装maven.md)
+* [centos7安装mysql](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装mysql.md)
+* [centos7安装redis](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装redis.md)
+* [centos7安装tomcat](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装tomcat.md)
+* [将应用添加为Linux的服务](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/将应用添加为Linux的服务.md)
+
 
 
 ## 参考书籍

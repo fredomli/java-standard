@@ -11,7 +11,7 @@ wget https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3
 ```
 ### 解压maven安装文件
 ```shell
-jar -zxvf apache-maven-3.6.3-bin.tar.gz
+tar -zxvf apache-maven-3.6.3-bin.tar.gz
 ```
 移动到指定位置并重命名：
 ```shell

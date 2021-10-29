@@ -65,10 +65,9 @@ systemctl start docker
 docker version
 ```
 
-## 参阅
-wget安装：
+### 设置docker为开机自启动
 ```shell
-yum -y install wget
+systemctl enable docker
 ```
 
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
