@@ -134,6 +134,8 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [linux下软件的安装与管理](https://github.com/fredomli/java-standard/blob/main/docs/linux/command/linux下软件的安装与管理.md) 
 * [Linux命令大全](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8.pdf)
 * [Docker基础学习](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/学习Docker基础.md)
+* [基于Java的Docker配置](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/基于Java的Docker配置.md)
+* [基于IDEA和Docker的SpringBoot项目容器化部署](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/基于IDEA和Docker的SpringBoot项目容器化.md)
 * [centos7安装nginx](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装nginx.md)
 * [centos7安装apache](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装apache.md)
 * [centos7安装docker](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装docker.md)
