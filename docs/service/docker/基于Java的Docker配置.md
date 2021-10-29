@@ -136,6 +136,143 @@ build命令可以选择使用——tag标志。标签用于设置图像的名称
 ```docker
 docker build --tag java-docker .
 ```
+> 这里构建是不能成功的，因为maven原因，这里项目使用的是本地安装的Maven，仅作参考学习。 
+
+正确的可以运行方式，直接将项目打包。DockerFile文件改为下面内容：
+```
+# syntax=docker/dockerfile:1
+FROM cantara/alpine-openjdk-jdk8
+COPY /target/spring-boot-docker.jar .
+ENTRYPOINT ["java","-jar","spring-boot-docker.jar"]
+```
+再次构建镜像。
+
+> 注意：docker配置文件名为：`Dockerfile`,某个人将它创建成`DockerFile`了，导致报错说没找到DockerFile。
+
+## 查看本地镜像
+```shell
+$ docker images
+REPOSITORY                    TAG                 IMAGE ID            CREATED             SIZE
+REPOSITORY                    TAG                 IMAGE ID            CREATED             SIZE
+java-docker                   latest              3921b6cde97c        3 minutes ago       123MB
+```
+
+您至少应该看到我们刚刚构建的java-docker:latest。
+
+## 镜像的标签
+镜像名称由斜杠分隔的名称组件组成。名称组件可以包含小写字母、数字和分隔符。分隔符定义为句点、一个或两个下划线或一个或多个破折号。名称组件不能以分隔符开始或结束。
+
+镜像由清单和层列表组成。此时，除了指向这些工件组合的“标记”之外，不要太担心清单和层。一个镜像可以有多个标记。让我们为我们创建的镜像创建第二个标签，并看看它的层。
+```shell
+docker tag java-docker:latest java-docker:v1.0.0
+```
+现在，运行docker images命令查看本地镜像的列表。
+```shell
+$ docker images
+REPOSITORY                    TAG                 IMAGE ID            CREATED             SIZE
+java-docker                   latest              3921b6cde97c        8 minutes ago       123MB
+java-docker                   v1.0.0              3921b6cde97c        8 minutes ago       123MB
+```
+您可以看到我们有两个以java-docker开始的镜像。我们知道它们是相同的图像，因为如果你看一下image ID列，你可以看到这两个镜像的值是相同的。
+
+## 删除镜像
+让我们删除刚刚创建的标记。为此，我们将使用rmi命令。rmi命令代表“remove image”。
+```shell
+$ docker rmi java-docker:v1.0.0
+Untagged: java-docker:v1.0.0
+```
+
+## 运行容器
+容器是一个正常的操作系统进程，除了这个进程是隔离的，它有自己的文件系统、自己的网络和自己与主机隔离的进程树。
+
+要在容器中运行映像，可以使用docker run命令。docker run命令需要一个参数，即镜像的名称。让我们启动映像并确保它正确运行。在终端上运行以下命令:
+```shell
+docker run java-docker
+```
+运行此命令后，您将注意到我们没有返回到命令提示符。这是因为我们的应用程序是一个REST服务器，在循环中运行，等待传入的请求，而不会将控制权返回给操作系统，直到我们停止容器。
+让我们打开一个新的终端，然后使用curl命令向服务器发出GET请求。
+```shell
+curl --request GET \
+--url http://localhost:8080/ \
+--header 'content-type: application/json'
+
+```
+如您所见，我们的curl命令失败了，因为到服务器的连接被拒绝了。这意味着我们无法连接到端口8080上的本地主机。这是意料之中的，因为我们的容器是独立运行的，其中包括网络。让我们停止集装箱并重新启动，在我们的本地网络上发布8080端口。
+
+要停止容器，请按ctrl-c。这将返回到终端提示符。
+
+为了发布容器的端口，我们将在docker run命令上使用——publish标志(简称-p)。——publish命令的格式为[host port]:[container port]。因此，如果我们想要将容器内部的端口8000公开到容器外部的端口8080，我们需要将8080:8000传递给——publish标志。
+
+启动容器并将8080端口公开到主机上的8080端口。
+```shell
+docker run --publish 8080:8080 java-docker
+```
+现在，让我们从上面重新运行curl命令。
+
+```shell
+ curl --request GET \
+--url http://localhost:8080/ \
+--header 'content-type: application/json'
+```
+
+## 列出本地容器
+当我们在后台运行容器时，我们如何知道容器是否正在运行，或者其他什么容器正在我们的机器上运行?我们可以运行docker ps命令。就像在Linux中运行ps命令来查看机器上的进程列表一样，我们也可以运行docker ps命令来查看机器上运行的容器列表。
+```shell
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+1d93aa88224f        java-docker         "java -jar spring-bo…"   36 seconds ago      Up 34 seconds       0.0.0.0:8080->8080/tcp   nostalgic_einstein
+```
+docker ps命令提供了一系列关于正在运行的容器的信息。我们可以看到容器ID，容器内部运行的图像，用于启动容器的命令、创建容器时的状态、公开的端口和容器的名称。
+
+您可能想知道我们的集装箱名称来自哪里。由于我们在启动容器时没有为它提供名称，Docker生成了一个随机名称。我们马上就会解决这个问题，但首先我们需要停止容器。要停止容器，运行docker stop命令，停止容器。我们需要传递容器的名称，或者可以使用容器ID。
+```shell
+$ docker stop nostalgic_einstein
+nostalgic_einstein
+```
+## 停止、启动和命名容器
+您可以启动、停止和重新启动Docker容器。当我们停止一个容器时，它不是被删除，而是状态被更改为已停止，容器内的进程也将停止。当我们在前一个模块中运行docker ps命令时，默认输出只显示正在运行的容器。当我们传递——all或-a时，我们会看到机器上的所有容器，而不管它们的启动或停止状态。
+
+```shell
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                            PORTS               NAMES
+1d93aa88224f        java-docker         "java -jar spring-bo…"   9 minutes ago       Exited (143) About a minute ago                       nostalgic_einstein
+c4163c78e861        9709a179344f        "java -jar spring-bo…"   2 hours ago         Exited (143) About an hour ago                        boot-start
+87beecf74441        ad3c7f023ed0        "docker-entrypoint.s…"   7 hours ago         Exited (0) 5 hours ago                                bold_wozniak
+```
+您现在应该看到列出了几个容器。这些是我们启动和停止的容器，但没有被移走。
+让我们重新启动刚刚停止的容器。找到我们刚刚停止的容器的名称，并使用restart命令替换下面的容器名称。
+
+```shell
+$ docker restart nostalgic_einstein
+```
+现在我们的容器停止了，让我们删除它。当您删除容器时，容器内的进程将停止，容器的元数据将被删除。
+要删除容器，只需运行docker rm命令传递容器名称。可以使用单个命令向命令传递多个容器名称。同样，将下面命令中的容器名称替换为系统中的容器名称。
+```shell
+$ docker rm trusting_beaver boot-start
+trusting_beaver
+boot-start
+```
+再次运行`docker ps --all`命令，查看所有容器都被删除了。
+
+在，让我们来解决随机命名的问题。标准的做法是为容器命名，原因很简单，这样更容易识别容器中运行的是什么，以及它与什么应用程序或服务相关联。
+
+要命名容器，我们只需要将`--name`标志传递给docker run命令。
+```shell
+$ docker run --rm -d -p 8080:8080 --name springboot-server java-docker
+7de85ba064107a32be5c8ec8b66982146018c987c4f3ce808aad9494b2c24f66
+```
+```shell
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                       PORTS                    NAMES
+7de85ba06410        java-docker         "java -jar spring-bo…"   8 seconds ago       Up 7 seconds                 0.0.0.0:8080->8080/tcp   springboot-server
+1d93aa88224f        java-docker         "java -jar spring-bo…"   15 minutes ago      Exited (143) 7 minutes ago                            nostalgic_einstein
+c4163c78e861        9709a179344f        "java -jar spring-bo…"   2 hours ago         Exited (143) 2 hours ago                              boot-start
+87beecf74441        ad3c7f023ed0        "docker-entrypoint.s…"   8 hours ago         Exited (0) 5 hours ago                                bold_wozniak
+
+```
+这是更好的!现在，我们可以根据名称轻松地识别容器。
+
+## 使用容器进行开发
 
 ## 参考
 * [Docker官网地址](https://www.docker.com/)

@@ -45,6 +45,7 @@ docker 安装完默认的docker hub 网址是 hub.docker.com，在官网去注�
 ## 创建DockerFile
 
 ```docker
+# syntax=docker/dockerfile:1
 FROM cantara/alpine-openjdk-jdk8
 COPY /target/spring-boot-docker.jar .
 ENTRYPOINT ["java","-jar","spring-boot-docker.jar"]
