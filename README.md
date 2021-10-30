@@ -145,6 +145,7 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [centos7安装redis](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装redis.md)
 * [centos7安装tomcat](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装tomcat.md)
 * [将应用添加为Linux的服务](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/将应用添加为Linux的服务.md)
+* [MavenWrapper介绍](https://github.com/fredomli/java-standard/blob/main/docs/maven/wrapper/MavenWrapper介绍.md)
 
 
 

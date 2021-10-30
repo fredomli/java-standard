@@ -273,6 +273,311 @@ c4163c78e861        9709a179344f        "java -jar spring-bo…"   2 hours ago  
 这是更好的!现在，我们可以根据名称轻松地识别容器。
 
 ## 使用容器进行开发
+在本模块中，我们将逐步为前面模块中构建的应用程序设置本地开发环境。我们将使用Docker来构建我们的图像和Docker Compose，使一切变得更容易。
+
+## 应用示例
+```shell
+# 创建目录
+cd /path/to/working/directory
+# 使用git clone 拉取项目
+git clone https://github.com/spring-projects/spring-petclinic.git
+# 进入目录
+cd spring-petclinic
+```
+
+> 这里我们可以将克隆下来的项目使用集成环境打开，例如IDEA，还能够使用IDEA的Docker插件。
+> 
+> mvnw 命令不能正常使用参考： [MavenWrapper介绍](https://github.com/fredomli/java-standard/blob/main/docs/maven/wrapper/MavenWrapper介绍.md)
+
+创建容器：
+```shell
+# syntax=docker/dockerfile:1
+
+FROM cantara/alpine-openjdk-jdk8
+
+WORKDIR /app
+
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
+
+COPY src ./src
+
+CMD ["./mvnw", "spring-boot:run"]
+```
+```shell
+docker build --tag java-docker .
+```
+
+### 在容器中运行数据库
+首先，我们将了解如何在容器中运行数据库，以及如何使用卷和网络来持久化数据，并允许应用程序与数据库对话。然后，我们将把所有内容放到一个Compose文件中，该文件允许我们使用一个命令设置和运行本地开发环境。最后，我们将看看如何将调试器连接到运行在容器中的应用程序。
+
+而不是下载MySQL，安装，配置，然后运行MySQL数据库作为服务，我们可以使用Docker官方映像MySQL并在容器中运行它。
+
+在容器中运行MySQL之前，我们将创建几个卷，Docker可以管理这些卷来存储持久性数据和配置。让我们使用Docker提供的托管卷特性，而不是使用绑定挂载。您可以在我们的文档中阅读有关使用卷的所有内容。
+
+现在我们来创建卷。我们将为MySQL的数据和配置创建一个。
+```shell
+docker volume create mysql_data
+docker volume create mysql_config
+```
+现在，我们将创建一个网络，应用程序和数据库将使用该网络彼此通信。这个网络被称为用户定义的桥接网络，它为我们提供了一个很好的DNS查找服务，我们可以在创建连接字符串时使用它。
+```shell
+docker network create mysqlnet
+```
+现在，让我们在容器中运行MySQL，并将其附加到上面创建的卷和网络上。Docker从Hub提取映像并在本地运行它。
+```shell
+$ docker run -it --rm -d -v mysql_data:/var/lib/mysql \
+-v mysql_config:/etc/mysql/conf.d \
+--network mysqlnet \
+--name mysqlserver \
+-e MYSQL_USER=petclinic -e MYSQL_PASSWORD=petclinic \
+-e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=petclinic \
+-p 3306:3306 mysql:8.0.23
+```
+好的，现在我们有了一个运行中的MySQL，让我们更新Dockerfile来激活应用程序中定义的MySQL Spring配置文件，并从内存中的H2数据库切换到我们刚刚创建的MySQL服务器。
+我们只需要将MySQL配置文件作为参数添加到`CMD`定义中。
+```docker
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql"]
+```
+让我们建立我们的镜像。
+```shell
+docker build --tag java-docker .
+```
+现在，让我们运行容器。这一次，我们需要设置MYSQL_URL环境变量，以便我们的应用程序知道使用什么连接字符串来访问数据库。我们将使用docker run命令来实现这一点。
+
+```shell
+$ docker run --rm -d \
+--name springboot-server \
+--network mysqlnet \
+-e MYSQL_URL=jdbc:mysql://mysqlserver/petclinic \
+-p 8080:8080 java-docker
+```
+让我们测试一下应用程序是否连接到数据库并能够列出兽医。
+```shell
+$  curl  --request GET \
+  --url http://localhost:8080/vets \
+  --header 'content-type: application/json'
+```
+
+### 使用Compose进行本地开发
+
+在本节中，我们将创建一个Compose文件，使用一个命令启动java-docker和MySQL数据库。我们还将设置Compose文件以调试模式启动Java -docker应用程序，以便将调试器连接到正在运行的Java进程。
+
+在IDE或文本编辑器中打开petclinic，并创建一个名为docker-compose.dev.yml的新文件。复制并粘贴以下命令到文件中。
+
+```yaml
+version: '3.8'
+services:
+  petclinic:
+    build:
+      context: .
+    ports:
+      - 8000:8000
+      - 8080:8080
+    environment:
+      - SERVER_PORT=8080
+      - MYSQL_URL=jdbc:mysql://mysqlserver/petclinic
+    volumes:
+      - ./:/app
+    command: ./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000"
+
+  mysqlserver:
+    image: mysql:8.0.23
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_USER=petclinic
+      - MYSQL_PASSWORD=petclinic
+      - MYSQL_DATABASE=petclinic
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_config:/etc/mysql/conf.d
+volumes:
+  mysql_data:
+  mysql_config:
+```
+这个Compose文件非常方便，因为我们不需要输入传递给docker run命令的所有参数。我们可以使用Compose文件进行声明。
+
+我们公开端口8000并声明JVM的调试配置，以便可以附加调试器。
+
+使用Compose文件的另一个很酷的特性是，我们设置了服务解析来使用服务名称。因此，我们现在可以在连接字符串中使用mysqlserver了。我们使用mysqlserver的原因是我们在撰写文件中已经将MySQL服务命名为mysqlserver。
+
+现在，启动我们的应用程序并确认它正在正常运行。
+
+```shell
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+我们传递——build标志，这样Docker将编译我们的映像，然后启动容器。如果运行成功，你应该会看到类似的输出:
+
+现在让我们测试API端点。运行curl命令:
+```shell
+$ curl  --request GET \
+  --url http://localhost:8080/vets \
+  --header 'content-type: application/json'
+```
+您将收到以下回复:
+```text
+{"vetList":[{"id":1,"firstName":"James","lastName":"Carter","specialties":[],"nrOfSpecialties":0,"new":false},{"id":2,"firstName":"Helen","lastName":"Leary","specialties":[{"id":1,"name":"radiology","new":false}],"nrOfSpecialties":1,"new":false},{"id":3,"firstName":"Linda","lastName":"Douglas","specialties":[{"id":3,"name":"dentistry","new":false},{"id":2,"name":"surgery","new":false}],"nrOfSpecialties":2,"new":false},{"id":4,"firstName":"Rafael","lastName":"Ortega","specialties":[{"id":2,"name":"surgery","new":false}],"nrOfSpecialties":1,"new":false},{"id":5,"firstName":"Henry","lastName":"Stevens","specialties":[{"id":1,"name":"radiology","new":false}],"nrOfSpecialties":1,"new":false},{"id":6,"firstName":"Sharon","lastName":"Jenkins","specialties":[],"nrOfSpecialties":0,"new":false}]}
+```
+### Connect 连接调试器
+我们将使用IntelliJ IDEA附带的调试器。您可以使用这个IDE的社区版本。在IntelliJ IDEA中打开项目，然后进入运行菜单>编辑配置。添加一个新的远程JVM调试配置，类似如下:
+
+打开以下文件src/main/java/org/springframework/samples/ petclinics /vet/ vetcontroller .java，并在showResourcesVetList函数中添加一个断点，例如第54行。
+
+启动您的调试会话，运行菜单，然后调试您的配置名称
+
+
+发送请求调用服务器端点。：
+```shell
+curl --request GET --url http://localhost:8080/vets
+```
+您应该已经看到代码在第54行中断，现在您可以像平常一样使用调试器了。你还可以检查和监视变量，设置条件断点，查看堆栈跟踪和其他一些操作。
+
+您还可以激活由SpringBoot Dev Tools提供的实时重新加载选项。有关如何连接到远程应用程序的信息，请参阅SpringBoot文档。
+
+## Docker 测试
+测试是现代软件开发的重要组成部分。对于不同的开发团队来说，测试意味着很多东西。有单元测试、集成测试和端到端测试。在本指南中，我们将看看如何在Docker中运行单元测试。
+
+### 重构Dockerfile以运行测试
+Spring宠物诊所的源代码已经在测试目录src/test/java/org/springframework/samples/petclinic中定义了测试。您只需要在pomo.xml中更新JaCoCo版本，以确保您的测试可以使用<jacoco.version>0.8.6</jacoco.version>，所以我们可以使用以下Docker命令来启动容器并运行测试:
+
+```shell
+docker run -it --rm --name springboot-test java-docker ./mvnw test
+```
+
+### 多阶段Dockerfile测试
+让我们看看如何将测试命令拖放到Dockerfile中。下面是一个多阶段的Dockerfile，我们将使用它来构建我们的生产映像和测试映像。将突出显示的行添加到Dockerfile中
+
+```docker
+# syntax=docker/dockerfile:1
+
+FROM openjdk:16-alpine3.13 as base
+
+WORKDIR /app
+
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
+COPY src ./src
+
+FROM base as test
+CMD ["./mvnw", "test"]
+
+FROM base as development
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql", "-Dspring-boot.run.jvmArguments='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000'"]
+
+FROM base as build
+RUN ./mvnw package
+
+FROM openjdk:11-jre-slim as production
+EXPOSE 8080
+
+COPY --from=build /app/target/spring-petclinic-*.jar /spring-petclinic.jar
+
+CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/spring-petclinic.jar"]
+```
+我们首先在FROM openjdk:16-alpine3.13语句中添加一个标签。这允许我们在其他构建阶段中引用这个构建阶段。接下来，我们添加了一个新的构建阶段，标记为test。我们将使用这个阶段运行我们的测试。
+
+现在让我们重新构建映像并运行测试。我们将像上面一样运行docker构建命令，但这次我们将添加`--target`测试标志，以便我们专门运行测试构建阶段。
+
+```shell
+docker build -t java-docker --target test .
+```
+现在我们已经构建了测试映像，我们可以将其作为容器运行，看看我们的测试是否通过。
+```shell
+docker run -it --rm --name springboot-test java-docker
+```
+构建输出被截断，但是您可以看到Maven测试运行器是成功的，我们的所有测试都通过了。
+
+这是伟大的。但是，我们必须运行两个Docker命令来构建和运行我们的测试。我们可以通过在测试阶段使用RUN语句而不是CMD语句来稍微改进这一点。CMD语句不会在映像构建过程中执行，而是在容器中运行映像时执行。当使用RUN语句时，我们的测试在构建映像时运行，在失败时停止构建。
+
+```docker
+# syntax=docker/dockerfile:1
+
+FROM openjdk:16-alpine3.13 as base
+
+WORKDIR /app
+
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
+COPY src ./src
+
+FROM base as test
+RUN ["./mvnw", "test"]
+
+FROM base as development
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql", "-Dspring-boot.run.jvmArguments='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000'"]
+
+FROM base as build
+RUN ./mvnw package
+
+FROM openjdk:11-jre-slim as production
+EXPOSE 8080
+
+COPY --from=build /app/target/spring-petclinic-*.jar /spring-petclinic.jar
+
+CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/spring-petclinic.jar"]
+```
+
+现在，要运行我们的测试，我们只需要像上面一样运行docker构建命令。
+```shell
+docker build -t java-docker --target test .
+```
+为了简单起见，构建输出被截断，但是您可以看到我们的测试成功运行并通过了。让我们中断其中一个测试，并在测试失败时观察输出。
+
+打开src/test/java/org/springframework/samples/ petclinics /model/ validatortests .java文件，将第57行更改为如下内容。
+
+```json
+55   ConstraintViolation<Person> violation = constraintViolations.iterator().next();
+56   assertThat(violation.getPropertyPath().toString()).isEqualTo("firstName");
+57   assertThat(violation.getMessage()).isEqualTo("must be empty");
+58 }
+```
+现在，从上面运行docker构建命令，观察构建失败，失败的测试信息被打印到控制台。
+
+```shell
+$ docker build -t java-docker --target test .
+ [base 6/6] COPY src ./src
+ ERROR [test 1/1] RUN ["./mvnw", "test"]
+```
+### 多阶段Dockerfile开发
+Dockerfile的新版本生成了一个最终映像，该映像已准备好用于生产，但是您可以注意到，您还需要一个专门的步骤来生成开发容器。
+
+```docker
+FROM base as development
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql", "-Dspring-boot.run.jvmArguments='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000'"]
+```
+现在我们可以更新docker-compose.dev.yml，使用这个特定的目标来构建petclinic服务，并删除命令定义，如下所示:
+
+```yaml
+services:
+ petclinic:
+   build:
+     context: .
+     target: development
+   ports:
+     - 8000:8000
+     - 8080:8080
+   environment:
+     - SERVER_PORT=8080
+     - MYSQL_URL=jdbc:mysql://mysqlserver/petclinic
+   volumes:
+     - ./:/app
+```
+现在，让我们运行Compose应用程序。您现在应该看到应用程序的行为与以前一样，并且您仍然可以调试它。
+```shell
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+## Docker CI/CD(持续化集成，持续化部署) 配置
+
+## 部署你的项目
+现在，我们已经配置了CI/CD管道，让我们看看如何部署应用程序。Docker支持在Azure ACI和AWS ECS上部署容器。如果你已经在Docker Desktop中启用了Kubernetes，你也可以将你的应用部署到Kubernetes。
 
 ## 参考
 * [Docker官网地址](https://www.docker.com/)
