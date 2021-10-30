@@ -45,6 +45,7 @@ yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/d
 #从高到低列出Docker-ce的版本
 yum list docker-ce.x86_64  --showduplicates | sort -r
 ```
+
 指定安装版本：
 ```shell
 # 例子

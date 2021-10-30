@@ -146,6 +146,9 @@ Java EE 是 J2EE的一个新的名称，之所以改名，目的还是让大家�
 * [centos7安装tomcat](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/centos7安装tomcat.md)
 * [将应用添加为Linux的服务](https://github.com/fredomli/java-standard/blob/main/docs/linux/install/将应用添加为Linux的服务.md)
 * [MavenWrapper介绍](https://github.com/fredomli/java-standard/blob/main/docs/maven/wrapper/MavenWrapper介绍.md)
+* [Jenkins基础学习](https://github.com/fredomli/java-standard/blob/main/docs/service/jenkins/Jenkins基础学习.md)
+* [安装Jenkins](https://github.com/fredomli/java-standard/blob/main/docs/service/jenkins/安装Jenkins.md)
+* [Kubernetes基础学习](https://github.com/fredomli/java-standard/blob/main/docs/service/kubernetes/学习Kubernetes基础.md)
 
 
 

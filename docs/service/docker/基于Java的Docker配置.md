@@ -533,9 +533,9 @@ docker build -t java-docker --target test .
 打开src/test/java/org/springframework/samples/ petclinics /model/ validatortests .java文件，将第57行更改为如下内容。
 
 ```json
-55   ConstraintViolation<Person> violation = constraintViolations.iterator().next();
-56   assertThat(violation.getPropertyPath().toString()).isEqualTo("firstName");
-57   assertThat(violation.getMessage()).isEqualTo("must be empty");
+55   ConstraintViolation<Person> violation = constraintViolations.iterator().next()
+56   assertThat(violation.getPropertyPath().toString()).isEqualTo("firstName")
+57   assertThat(violation.getMessage()).isEqualTo("must be empty")
 58 }
 ```
 现在，从上面运行docker构建命令，观察构建失败，失败的测试信息被打印到控制台。

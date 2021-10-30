@@ -299,5 +299,8 @@ firewall-cmd [-zone=public] --remove-port=3000/tcp --permanent
 ## 参考
 * [Docker官网地址](https://www.docker.com/)
 * [Docker官网文档](https://docs.docker.com/)
+* [基于Java的Docker配置](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/基于Java的Docker配置.md)
+* [基于IDEA和Docker的SpringBoot项目容器化部署](https://github.com/fredomli/java-standard/blob/main/docs/service/docker/基于IDEA和Docker的SpringBoot项目容器化.md)
+
 
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
