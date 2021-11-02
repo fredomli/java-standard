@@ -100,11 +100,481 @@
 * 开启机器上的某些端口。
 * 禁用交换分区。为了保证 kubelet 正常工作，你 必须 禁用交换分区。
 
+参考：
+* [VM-虚拟机安装](https://github.com/fredomli/java-standard/blob/main/docs/vm/虚拟机安装.md)
+* [Centos镜像下载](https://github.com/fredomli/java-standard/blob/main/docs/vm/Centos系统镜像下载.md)
+* [使用VMware和Centos7创建虚拟机](https://github.com/fredomli/java-standard/blob/main/docs/vm/使用VMware和Centos7创建虚拟机.md)
+* [XShell工具非商业版本](https://github.com/fredomli/java-standard/blob/main/docs/utils/shell/XShell工具学生版.md)
+* [Linux命令大全](https://fredomli-oss.oss-cn-chengdu.aliyuncs.com/picture/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8.pdf)
+
+#### 确保每个节点上 MAC 地址和 product_uuid 的唯一性
+* 你可以使用命令 kip lin 或 ifconfig -a 来获取网络接口的 MAC 地址
+* 可以使用 sudo cat /sys/class/dmi/id/product_uuid 命令对 product_uuid 校验
+  
+```shell
+[root@localhost ~]# ifconfig -a
+docker0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+        inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+        ether 02:42:86:dd:a6:39  txqueuelen 0  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+ens33: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.199.129  netmask 255.255.255.0  broadcast 192.168.199.255
+        inet6 fe80::bcda:ff1c:1d39:874d  prefixlen 64  scopeid 0x20<link>
+        ether 00:0c:29:ac:41:3b  txqueuelen 1000  (Ethernet)
+        RX packets 87003  bytes 128802512 (122.8 MiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 18802  bytes 1308704 (1.2 MiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 18  bytes 1488 (1.4 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 18  bytes 1488 (1.4 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+        
+[root@localhost ~]# cat /sys/class/dmi/id/product_uuid
+2FC14D56-9F55-90CA-F2B9-89D8C7AC413B
+```
+一般来讲，硬件设备会拥有唯一的地址，但是有些虚拟机的地址可能会重复。 Kubernetes 使用这些值来唯一确定集群中的节点。 如果这些值在每个节点上不唯一，可能会导致安装 失败。
+
+#### 检查网络适配器
+如果你有一个以上的网络适配器，同时你的 Kubernetes 组件通过默认路由不可达，我们建议你预先添加 IP 路由规则，这样 Kubernetes 集群就可以通过对应的适配器完成连接。
+
+#### 允许 iptables 检查桥接流量
+确保 `br_netfilter` 模块被加载。这一操作可以通过运行 `lsmod | grep br_netfilter` 来完成。若要显式加载该模块，可执行 `sudo modprobe br_netfilter`。
+
+为了让你的 Linux 节点上的 iptables 能够正确地查看桥接流量，你需要确保在你的 sysctl 配置中将 `net.bridge.bridge-nf-call-iptables` 设置为 1。例如：
+
+```shell
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+```
+#### 检查所需端口
+
+1. 控制平面节点:
+
+|协议|方向|端口范围|作用|使用者|
+|---|---|---|---|---|
+|TCP	|入站	|6443	|Kubernetes API 服务器	|所有组件|
+|TCP	|入站	|2379-2380|etcd 服务器客户端 API| kube-apiserver, etcd|
+|TCP	|入站	|10250	|Kubelet API	|kubelet 自身、控制平面组件|
+|TCP	|入站	|10251	|kube-scheduler	|kube-scheduler 自身|
+|TCP	|入站	|10252	|kube-controller-manager	|kube-controller-manager 自身|
+
+查看端口使用情况：
+```shell
+netstat -ntpl
+```
+
+2. 工作节点:  
+
+|协议|方向|端口范围|作用|使用者|
+|---|---|---|---|---|
+|TCP|	入站	|10250	|Kubelet API	|kubelet 自身、控制平面组件|
+|TCP|	入站	|30000-32767|	NodePort 服务	|所有组件|
+
+> NodePort 服务 的默认端口范围。
+
+使用 * 标记的任意端口号都可以被覆盖，所以你需要保证所定制的端口是开放的。
+
+虽然控制平面节点已经包含了 etcd 的端口，你也可以使用自定义的外部 etcd 集群，或是指定自定义端口。
+
+你使用的 Pod 网络插件 (见下) 也可能需要某些特定端口开启。由于各个 Pod 网络插件都有所不同， 请参阅他们各自文档中对端口的要求。
+
+#### 安装 runtime
+为了在 Pod 中运行容器，Kubernetes 使用 容器运行时（Container Runtime）。比如我们熟悉的Docker技术。
 
 
 
-### 对 ubeadm 进行故障排查
+> 在Linux结点中：
+>
+> 默认情况下，Kubernetes 使用 容器运行时接口（Container Runtime Interface，CRI） 来与你所选择的容器运行时交互。
+>
+> 如果你不指定运行时，则 kubeadm 会自动尝试检测到系统上已经安装的运行时， 方法是扫描一组众所周知的 Unix 域套接字。 下面的表格列举了一些容器运行时及其对应的套接字路径：
+
+|运行时	|域套接字|
+|---|---|
+|Docker	|/var/run/dockershim.sock|
+|containerd	|/run/containerd/containerd.sock|
+|CRI-O	|/var/run/crio/crio.sock|
+
+如果同时检测到 Docker 和 containerd，则优先选择 Docker。 这是必然的，因为 Docker 18.09 附带了 containerd 并且两者都是可以检测到的， 即使你仅安装了 Docker。 如果检测到其他两个或多个运行时，kubeadm 输出错误信息并退出。
+kubelet 通过内置的 dockershim CRI 实现与 Docker 集成。
+#### 安装 kubeadm、kubelet 和 kubectl
+
+你需要在每台机器上安装以下的软件包：
+
+* kubeadm：用来初始化集群的指令。
+* kubelet：在集群中的每个节点上用来启动 Pod 和容器等。
+* kubectl：用来与集群通信的命令行工具。
+
+kubeadm 不能 帮你安装或者管理 kubelet 或 kubectl，所以你需要 确保它们与通过 kubeadm 安装的控制平面的版本相匹配。 如果不这样做，则存在发生版本偏差的风险，可能会导致一些预料之外的错误和问题。 然而，控制平面与 kubelet 间的相差一个次要版本不一致是支持的，但 kubelet 的版本不可以超过 API 服务器的版本。 例如，1.7.0 版本的 kubelet 可以完全兼容 1.8.0 版本的 API 服务器，反之则不可以。
+
+[安装配置kubectl](https://kubernetes.io/zh/docs/tasks/tools/)
+
+> 警告：  
+> 这些指南不包括系统升级时使用的所有 Kubernetes 程序包。这是因为 kubeadm 和 Kubernetes 有特殊的升级注意事项。
+
+关于版本偏差的更多信息，请参阅以下文档：
+* [Kubernetes 版本与版本间的偏差策略](https://kubernetes.io/zh/docs/setup/release/version-skew-policy/)
+* [Kubeadm 特定的版本偏差策略](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#version-skew-policy)
+
+##### 环境配置
+修改主机名，以下配置需要在所有的主机上执行，这里是在master结点执行。
+```shell
+# 查看 hostname
+hostname
+# 修改 hostname
+hostnamectl set-hostname k8s-master
+```
+编辑`/etc/hosts` 文件，添加域名解析：
+```shell
+cat <<EOF>>/etc/hosts
+192.163.199.129 k8s-master
+192.168.199.130 k8s-node-1
+192.168.199.131 k8s-node-2
+EOF
+```
+```shell
+cat /etc/hosts
+```
+> 这里IP地址根据自己物理机或者虚拟机的真实IP而定。
+
+关闭防火墙,swap,和selinux。
+```shell
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
+
+# 将 SELinux 设置为 permissive 模式（相当于将其禁用）
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+sudo cat /etc/selinux/config
+
+sudo swapoff -a
+sudo sed -i 's/.*swap.*/#&/' /etc/fstab
+
+```
+配置国内yum源：
+```shell
+# 备份
+mkdir /etc/yum.repos.d/bak && mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak
+ 
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.cloud.tencent.com/repo/centos7_base.repo
+wget -O /etc/yum.repos.d/epel.repo http://mirrors.cloud.tencent.com/repo/epel-7.repo
+yum clean all 
+```
+配置国内kubernetes源：
+```shell
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+ 
+[kubernetes]
+ 
+name=Kubernetes
+ 
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+ 
+enabled=1
+ 
+gpgcheck=1
+ 
+repo_gpgcheck=1
+ 
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
+```
+配置Docker源：
+```shell
+wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
+```
+注意：
+* 通过运行命令 setenforce 0 和 sed ... 将 SELinux 设置为 permissive 模式 可以有效地将其禁用。 这是允许容器访问主机文件系统所必需的，而这些操作时为了例如 Pod 网络工作正常。
+* 你必须这么做，直到 kubelet 做出对 SELinux 的支持进行升级为止。
+* 如果你知道如何配置 SELinux 则可以将其保持启用状态，但可能需要设定 kubeadm 不支持的部分配置。
+
+##### 安装命令
+```shell
+
+sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+sudo systemctl enable --now kubelet
+```
+
+kubelet 现在每隔几秒就会重启，因为它陷入了一个等待 kubeadm 指令的死循环。
+
+> 到这里 Kubeadm 安装成功，下面我们就使用 Kubeadm 创建集群。
+
+### 对 kubeadm 进行故障排查
 ### 使用 kubeadm 创建集群
+使用 `kubeadm`，你能创建一个符合最佳实践的最小化 Kubernetes 集群。事实上，你可以使用 kubeadm 配置一个通过 Kubernetes 一致性测试 的集群。 kubeadm 还支持其他集群生命周期功能， 例如 启动引导令牌 和集群升级。
+kubeadm 工具很棒，如果你需要：
+* 一个尝试 Kubernetes 的简单方法。
+* 一个现有用户可以自动设置集群并测试其应用程序的途径。
+* 其他具有更大范围的生态系统和/或安装工具中的构建模块。
+  
+你可以在各种机器上安装和使用 kubeadm：笔记本电脑， 一组云服务器，Raspberry Pi 等。无论是部署到云还是本地， 你都可以将 kubeadm 集成到预配置系统中，例如 Ansible 或 Terraform。
+#### 准备开始
+* 一台或多台运行兼容 deb/rpm 的 Linux 操作系统的计算机；例如：Ubuntu 或 CentOS。
+* 每台机器 2 GB 以上的内存，内存不足时应用会受限制。
+* 用作控制平面节点的计算机上至少有2个 CPU。
+* 集群中所有计算机之间具有完全的网络连接。你可以使用公共网络或专用网络。
+
+你还需要使用可以在新集群中部署特定 Kubernetes 版本对应的 kubeadm。
+
+Kubernetes 版本及版本倾斜支持策略 适用于 kubeadm 以及整个 Kubernetes。 查阅该策略以了解支持哪些版本的 Kubernetes 和 kubeadm。 该页面是为 Kubernetes v1.22 编写的。
+
+kubeadm 工具的整体功能状态为一般可用性（GA）。一些子功能仍在积极开发中。 随着工具的发展，创建集群的实现可能会略有变化，但总体实现应相当稳定。
+#### 目标
+* 安装单个控制平面的 Kubernetes 集群
+* 在集群上安装 Pod 网络，以便你的 Pod 可以相互连通
+
+#### 操作指南
+> 如果你已经安装了`kubeadm`，执行 `apt-get update` && `apt-get upgrade` 或 `yum update` 以获取 kubeadm 的最新版本。
+>  
+> 升级时，`kubelet` 每隔几秒钟重新启动一次， 在 crashloop 状态中等待 kubeadm 发布指令。crashloop 状态是正常现象。 初始化控制平面后，kubelet 将正常运行。
+
+#### 准备所需的容器镜像
+这个步骤是可选的，只适用于你希望 `kubeadm init` 和 `kubeadm join` 不去下载存放在 `k8s.gcr.io` 上的默认的容器镜像的情况。
+
+当你在离线的节点上创建一个集群的时候，Kubeadm 有一些命令可以帮助你预拉取所需的镜像。 阅读[离线运行 kubeadm](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/docs/reference/setup-tools/kubeadm/kubeadm-init#custom-images) 获取更多的详情。
+
+Kubeadm 允许你给所需要的镜像指定一个自定义的镜像仓库。 阅读使用[自定义镜像](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/docs/reference/setup-tools/kubeadm/kubeadm-init#custom-images) 获取更多的详情。
+
+#### 初始化控制平面节点
+控制平面节点是运行控制平面组件的机器， 包括 etcd （集群数据库） 和 API Server （命令行工具 kubectl 与之通信）。
+1. （推荐）如果计划将单个控制平面 kubeadm 集群升级成高可用， 你应该指定 --control-plane-endpoint 为所有控制平面节点设置共享端点。 端点可以是负载均衡器的 DNS 名称或 IP 地址。
+2. 选择一个 Pod 网络插件，并验证是否需要为 kubeadm init 传递参数。 根据你选择的第三方网络插件，你可能需要设置 --pod-network-cidr 的值。 请参阅 安装Pod网络附加组件。
+3. （可选）从版本1.14开始，kubeadm 尝试使用一系列众所周知的域套接字路径来检测 Linux 上的容器运行时。 要使用不同的容器运行时， 或者如果在预配置的节点上安装了多个容器，请为 kubeadm init 指定 --cri-socket 参数。 请参阅安装运行时。
+4. （可选）除非另有说明，否则 kubeadm 使用与默认网关关联的网络接口来设置此控制平面节点 API server 的广播地址。 要使用其他网络接口，请为 kubeadm init 设置 --apiserver-advertise-address=<ip-address> 参数。 要部署使用 IPv6 地址的 Kubernetes 集群， 必须指定一个 IPv6 地址，例如 --apiserver-advertise-address=fd00::101
+
+要初始化控制平面节点，请运行：
+```shell
+kubeadm init <args>
+```
+#### 关于 apiserver-advertise-address 和 ControlPlaneEndpoint 的注意事项
+
+`--apiserver-advertise-address` 可用于为控制平面节点的 API server 设置广播地址，`--control-plane-endpoint` 可用于为所有控制平面节点设置共享端点。
+
+`--control-plane-endpoint` 允许 IP 地址和可以映射到 IP 地址的 DNS 名称。 请与你的网络管理员联系，以评估有关此类映射的可能解决方案。
+
+这是一个示例映射：
+```shell
+192.168.0.102 cluster-endpoint
+```
+其中 `192.168.0.102` 是此节点的 IP 地址，`cluster-endpoint` 是映射到该 IP 的自定义 DNS 名称。 这将允许你将 `--control-plane-endpoint=cluster-endpoint` 传递给 `kubeadm init`,并将相同的 DNS 名称传递给 `kubeadm join`。 稍后你可以修改 `cluster-endpoint` 以指向高可用性方案中的负载均衡器的地址。kubeadm 不支持将没有 `--control-plane-endpoint` 参数的单个控制平面集群转换为高可用性集群。
+
+
+#### Kubernetes 常用命令
+* kubeadm init 用于搭建控制平面节点
+* kubeadm join 用于搭建工作节点并将其加入到集群中
+* kubeadm upgrade 用于升级 Kubernetes 集群到新版本
+* kubeadm config 如果你使用了 v1.7.x 或更低版本的 kubeadm 版本初始化你的集群，则使用 kubeadm upgrade 来配置你的集群
+* kubeadm token 用于管理 kubeadm join 使用的令牌
+* kubeadm reset 用于恢复通过 kubeadm init 或者 kubeadm join 命令对节点进行的任何变更
+* kubeadm certs 用于管理 Kubernetes 证书
+* kubeadm kubeconfig 用于管理 kubeconfig 文件
+* kubeadm version 用于打印 kubeadm 的版本信息
+* kubeadm alpha 用于预览一组可用于收集社区反馈的特性
+
+要再次运行 kubeadm init，你必须首先[卸载集群](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#tear-down) 。
+
+如果将具有不同架构的节点加入集群， 请确保已部署的 DaemonSet 对这种体系结构具有容器镜像支持。
+
+`kubeadm init` 首先运行一系列预检查以确保机器 准备运行 Kubernetes。这些预检查会显示警告并在错误时退出。然后 `kubeadm init` 下载并安装集群控制平面组件。这可能会需要几分钟。 完成之后你应该看到：
+
+```shell
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You should now deploy a Pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  /docs/concepts/cluster-administration/addons/
+
+You can now join any number of machines by running the following on each node
+as root:
+
+  kubeadm join <control-plane-host>:<control-plane-port> --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+```
+要使非 root 用户可以运行 `kubectl`，请运行以下命令， 它们也是 `kubeadm init` 输出的一部分：
+
+```shell
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+或者，如果你是 `root` 用户，则可以运行：
+```shell
+export KUBECONFIG=/etc/kubernetes/admin.conf
+```
+> kubeadm 对 admin.conf 中的证书进行签名时，将其配置为 Subject: O = system:masters, CN = kubernetes-admin。 system:masters 是一个例外的、超级用户组，可以绕过鉴权层（例如 RBAC）。 不要将 admin.conf 文件与任何人共享，应该使用 kubeadm kubeconfig user 命令为其他用户生成 kubeconfig 文件，完成对他们的定制授权。
+
+记录 `kubeadm init` 输出的 `kubeadm join` 命令。 你需要此命令将节点[加入集群](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#join-nodes) 。
+
+令牌用于控制平面节点和加入节点之间的相互身份验证。 这里包含的令牌是密钥。确保它的安全， 因为拥有此令牌的任何人都可以将经过身份验证的节点添加到你的集群中。 可以使用 `kubeadm token` 命令列出，创建和删除这些令牌。 请参阅 `kubeadm` 参考指南。
+
+#### 安装 Pod 网络附加组件
+你可以使用以下命令在控制平面节点或具有 kubeconfig 凭据的节点上安装 Pod 网络附加组件：
+
+```shell
+kubectl apply -f <add-on.yaml>
+```
+每个集群只能安装一个 Pod 网络。
+
+安装 Pod 网络后，您可以通过在 `kubectl get pods --all-namespaces` 输出中检查 CoreDNS Pod 是否 Running 来确认其是否正常运行。 一旦 `CoreDNS Pod` 启用并运行，你就可以继续加入节点。
+
+如果您的网络无法正常工作或 CoreDNS 不在“运行中”状态，请查看 kubeadm 的 故障排除指南。
+
+#### 控制平面节点隔离
+默认情况下，出于安全原因，你的集群不会在控制平面节点上调度 Pod。 如果你希望能够在控制平面节点上调度 Pod， 例如用于开发的单机 Kubernetes 集群，请运行：
+
+```shell
+kubectl taint nodes --all node-role.kubernetes.io/master-
+```
+输出看起来像：
+```shell
+node "test-01" untainted
+taint "node-role.kubernetes.io/master:" not found
+taint "node-role.kubernetes.io/master:" not found
+```
+这将从任何拥有 `node-role.kubernetes.io/master` taint 标记的节点中移除该标记， 包括控制平面节点，这意味着调度程序将能够在任何地方调度 Pods。
+
+#### 加入节点
+节点是你的工作负载（容器和 Pod 等）运行的地方。要将新节点添加到集群，请对每台计算机执行以下操
+* SSH 到机器
+* 成为 root （例如 sudo su -）
+* 运行 kubeadm init 输出的命令。例如：
+
+```shell
+kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>
+```
+如果没有令牌，可以通过在控制平面节点上运行以下命令来获取令牌：
+
+```shell
+kubeadm token list
+```
+```
+TOKEN                    TTL  EXPIRES              USAGES           DESCRIPTION            EXTRA GROUPS
+8ewj1p.9r9hcjoqgajrj4gi  23h  2018-06-12T02:51:28Z authentication,  The default bootstrap  system:
+                                                   signing          token generated by     bootstrappers:
+                                                                    'kubeadm init'.        kubeadm:
+                                                                                           default-node-token
+```
+默认情况下，令牌会在24小时后过期。如果要在当前令牌过期后将节点加入集群， 则可以通过在控制平面节点上运行以下命令来创建新令牌：
+
+```shell
+kubeadm token create
+```
+
+输出类似于以下内容：
+```shell
+5didvk.d09sbcov8ph2amjw
+```
+如果你没有 `--discovery-token-ca-cert-hash` 的值，则可以通过在控制平面节点上执行以下命令链来获取它：
+
+````shell
+openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
+   openssl dgst -sha256 -hex | sed 's/^.* //'
+````
+输出类似于以下内容：
+```shell
+8cb2de97839780a412b93877f8507ad6c94f73add17d5d7058e91741c9d5ec78
+```
+
+> 说明： 要为 <control-plane-host>:<control-plane-port> 指定 IPv6 元组，必须将 IPv6 地址括在方括号中，例如：[fd00::101]:2073
+
+```shell
+[preflight] Running pre-flight checks
+
+... (log output of join workflow) ...
+
+Node join complete:
+* Certificate signing request sent to control-plane and response
+  received.
+* Kubelet informed of new secure connection details.
+
+Run 'kubectl get nodes' on control-plane to see this machine join.
+```
+几秒钟后，当你在控制平面节点上执行 kubectl get nodes，你会注意到该节点出现在输出中。
+
+#### （可选）从控制平面节点以外的计算机控制集群
+为了使 kubectl 在其他计算机（例如笔记本电脑）上与你的集群通信， 你需要将管理员 kubeconfig 文件从控制平面节点复制到工作站，如下所示：
+
+```shell
+scp root@<control-plane-host>:/etc/kubernetes/admin.conf .
+kubectl --kubeconfig ./admin.conf get nodes
+```
+> 上面的示例假定为 root 用户启用了SSH访问。如果不是这种情况， 你可以使用 scp 将 admin.conf 文件复制给其他允许访问的用户。
+
+> admin.conf 文件为用户提供了对集群的超级用户特权。 该文件应谨慎使用。对于普通用户，建议生成一个你为其授予特权的唯一证书。 你可以使用 kubeadm alpha kubeconfig user --client-name <CN> 命令执行此操作。 该命令会将 KubeConfig 文件打印到 STDOUT，你应该将其保存到文件并分发给用户。 之后，使用 kubectl create (cluster)rolebinding 授予特权。
+
+#### （可选）将API服务器代理到本地主机
+如果要从集群外部连接到 API 服务器，则可以使用 kubectl proxy：
+```shell
+scp root@<control-plane-host>:/etc/kubernetes/admin.conf .
+kubectl --kubeconfig ./admin.conf proxy
+```
+
+你现在可以在本地访问API服务器 http://localhost:8001/api/v1
+
+#### 清理
+如果你在集群中使用了一次性服务器进行测试，则可以关闭这些服务器，而无需进一步清理。你可以使用 `kubectl config delete-cluster` 删除对集群的本地引用。
+
+但是，如果要更干净地取消配置群集， 则应首先清空节点并确保该节点为空， 然后取消配置该节点。
+
+#### 删除节点
+使用适当的凭证与控制平面节点通信，运行：
+```shell
+kubectl drain <node name> --delete-emptydir-data --force --ignore-daemonsets
+```
+在删除节点之前，请重置 kubeadm 安装的状态：
+```shell
+kubeadm reset
+```
+重置过程不会重置或清除 iptables 规则或 IPVS 表。如果你希望重置 iptables，则必须手动进行：
+
+```shell
+iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X
+```
+如果要重置 IPVS 表，则必须运行以下命令：
+```shell
+ipvsadm -C
+```
+现在删除节点：
+```shell
+kubectl delete node <node name>
+```
+如果你想重新开始，只需运行 `kubeadm init` 或 `kubeadm join` 并加上适当的参数。
+#### 清理控制平面
+你可以在控制平面主机上使用 `kubeadm reset` 来触发尽力而为的清理。
+
+有关此子命令及其选项的更多信息，请参见[kubeadm reset参考文档](https://kubernetes.io/zh/docs/reference/setup-tools/kubeadm/kubeadm-reset/) 。
+#### 下一步
+* 使用 Sonobuoy 验证集群是否正常运行。
+* 有关使用 kubeadm 升级集群的详细信息，请参阅升级 kubeadm 集群。
+* 在 kubeadm 参考文档中了解有关高级 kubeadm 用法的信息。
+* 了解有关 Kubernetes 概念和 kubectl 的更多信息。
+* 有关 Pod 网络附加组件的更多列表，请参见集群网络页面。
+* 请参阅附加组件列表以探索其他附加组件， 包括用于 Kubernetes 集群的日志记录，监视，网络策略，可视化和控制的工具。
+* 配置集群如何处理集群事件的日志以及 在 Pods 中运行的应用程序。 有关所涉及内容的概述，请参见日志架构。
+
 ### 使用 kubeadm API 定制组件
 ### 高可用拓扑选项
 ### 利用 kubeadm 创建高可用集群
