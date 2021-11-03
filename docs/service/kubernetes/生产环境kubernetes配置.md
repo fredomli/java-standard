@@ -267,6 +267,9 @@ sudo cat /etc/selinux/config
 sudo swapoff -a
 sudo sed -i 's/.*swap.*/#&/' /etc/fstab
 
+# 注释掉 swap 行
+sudo cat /etc/fstab
+
 ```
 配置国内yum源：
 ```shell
@@ -364,6 +367,136 @@ Kubeadm 允许你给所需要的镜像指定一个自定义的镜像仓库。 �
 ```shell
 kubeadm init <args>
 ```
+查看默认网卡和IP：
+```shell
+ip route show
+
+ip addr
+```
+示例：
+```shell
+kubeadm init \
+--apiserver-advertise-address=192.168.199.129 \
+--image-repository registry.aliyuncs.com/google_containers \
+--kubernetes-version v1.22.3 \
+--service-cidr=10.96.0.0/16 \
+--pod-network-cidr=10.244.0.0/16 \
+--ignore-preflight-errors=all
+```
+初始哈失败：
+```shell
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp [::1]:10248: connect: connection refused.
+```
+
+```shell
+# 方案一
+vi /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"
+# 方案二
+vi /usr/lib/systemd/system/docker.service
+# 在这一行
+ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+# 添加
+--exec-opt native.cgroupdriver=systemd
+
+# 随后先删除初始化导致的错误文件夹
+rm -rf /etc/kubernetes/manifests
+# 然后重启docker
+systemctl daemon-reload
+systemctl restart docker
+```
+重新安装准备：
+```shell
+sudo kubeadm reset
+
+rm -rf $HOME/.kube/config/
+rm -rf /etc/cni/net.d
+rm -rf /etc/kubernetes/
+
+```
+安装成功：
+```shell
+[root@k8s-master k8s]# kubeadm init \
+> --apiserver-advertise-address=192.168.199.129 \
+> --image-repository registry.aliyuncs.com/google_containers \
+> --kubernetes-version v1.22.3 \
+> --service-cidr=10.96.0.0/16 \
+> --pod-network-cidr=10.244.0.0/16
+[init] Using Kubernetes version: v1.22.3
+[preflight] Running pre-flight checks
+[preflight] Pulling images required for setting up a Kubernetes cluster
+[preflight] This might take a minute or two, depending on the speed of your internet connection
+[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+[certs] Using certificateDir folder "/etc/kubernetes/pki"
+[certs] Generating "ca" certificate and key
+[certs] Generating "apiserver" certificate and key
+[certs] apiserver serving cert is signed for DNS names [k8s-master kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 192.168.199.129]
+[certs] Generating "apiserver-kubelet-client" certificate and key
+[certs] Generating "front-proxy-ca" certificate and key
+[certs] Generating "front-proxy-client" certificate and key
+[certs] Generating "etcd/ca" certificate and key
+[certs] Generating "etcd/server" certificate and key
+[certs] etcd/server serving cert is signed for DNS names [k8s-master localhost] and IPs [192.168.199.129 127.0.0.1 ::1]
+[certs] Generating "etcd/peer" certificate and key
+[certs] etcd/peer serving cert is signed for DNS names [k8s-master localhost] and IPs [192.168.199.129 127.0.0.1 ::1]
+[certs] Generating "etcd/healthcheck-client" certificate and key
+[certs] Generating "apiserver-etcd-client" certificate and key
+[certs] Generating "sa" key and public key
+[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+[kubeconfig] Writing "admin.conf" kubeconfig file
+[kubeconfig] Writing "kubelet.conf" kubeconfig file
+[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+[kubeconfig] Writing "scheduler.conf" kubeconfig file
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Starting the kubelet
+[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+[control-plane] Creating static Pod manifest for "kube-apiserver"
+[control-plane] Creating static Pod manifest for "kube-controller-manager"
+[control-plane] Creating static Pod manifest for "kube-scheduler"
+[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+[apiclient] All control plane components are healthy after 10.004729 seconds
+[upload-config] Storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+[kubelet] Creating a ConfigMap "kubelet-config-1.22" in namespace kube-system with the configuration for the kubelets in the cluster
+[upload-certs] Skipping phase. Please see --upload-certs
+[mark-control-plane] Marking the node k8s-master as control-plane by adding the labels: [node-role.kubernetes.io/master(deprecated) node-role.kubernetes.io/control-plane node.kubernetes.io/exclude-from-external-load-balancers]
+[mark-control-plane] Marking the node k8s-master as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+[bootstrap-token] Using token: 70w5nh.u38kykr4057gt369
+[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes
+[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+[bootstrap-token] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+[bootstrap-token] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+[bootstrap-token] Creating the "cluster-info" ConfigMap in the "kube-public" namespace
+[kubelet-finalize] Updating "/etc/kubernetes/kubelet.conf" to point to a rotatable kubelet client certificate and key
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.199.129:6443 --token 70w5nh.u38kykr4057gt369 \
+	--discovery-token-ca-cert-hash sha256:ad6428f299fa5a190e79349a7faa20e6644d3b79e93db33c42d079fb17bb790f
+```
+根据提示信息完成相应的操作，包括pod network，join信息，权限设置。
+
+
 #### 关于 apiserver-advertise-address 和 ControlPlaneEndpoint 的注意事项
 
 `--apiserver-advertise-address` 可用于为控制平面节点的 API server 设置广播地址，`--control-plane-endpoint` 可用于为所有控制平面节点设置共享端点。
@@ -442,6 +575,23 @@ kubectl apply -f <add-on.yaml>
 
 如果您的网络无法正常工作或 CoreDNS 不在“运行中”状态，请查看 kubeadm 的 故障排除指南。
 
+下面我们结合自己应用安装，安裝应用命令如下：
+```shell
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+# 卸载命令
+kubectl delete -f "delete"
+```
+效果如下：
+```shell
+serviceaccount/weave-net created
+clusterrole.rbac.authorization.k8s.io/weave-net created
+clusterrolebinding.rbac.authorization.k8s.io/weave-net created
+role.rbac.authorization.k8s.io/weave-net created
+rolebinding.rbac.authorization.k8s.io/weave-net created
+daemonset.apps/weave-net created
+```
+
 #### 控制平面节点隔离
 默认情况下，出于安全原因，你的集群不会在控制平面节点上调度 Pod。 如果你希望能够在控制平面节点上调度 Pod， 例如用于开发的单机 Kubernetes 集群，请运行：
 
@@ -462,9 +612,74 @@ taint "node-role.kubernetes.io/master:" not found
 * 成为 root （例如 sudo su -）
 * 运行 kubeadm init 输出的命令。例如：
 
+在加入结点之前，可以使用命令查看当前节点状态。
+```shell
+# 使用该命令查找不到，需要名称空间
+kubectl get pods
+No resources found in default namespace.
+
+# 查看名称空间
+kubectl get ns
+NAME              STATUS   AGE
+default           Active   74m
+kube-node-lease   Active   74m
+kube-public       Active   74m
+kube-system       Active   74m
+
+# 直接获取所有
+kubectl get pods --all-namespaces
+kube-system   coredns-7f6cbbb7b8-4fv72             0/1     ContainerCreating   0             77m
+kube-system   coredns-7f6cbbb7b8-rdb26             0/1     ContainerCreating   0             77m
+kube-system   etcd-k8s-master                      1/1     Running             0             77m
+kube-system   kube-apiserver-k8s-master            1/1     Running             0             77m
+kube-system   kube-controller-manager-k8s-master   1/1     Running             0             77m
+kube-system   kube-proxy-h8msq                     1/1     Running             0             77m
+kube-system   kube-scheduler-k8s-master            1/1     Running             0             77m
+kube-system   weave-net-tg5q8                      2/2     Running             1 (17m ago)   20m
+```
+加入其它结点命令（内容为kubeadm init 输出）：
 ```shell
 kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>
 ```
+示例：
+```shell
+# 查看节点状态
+kubectl get nodes
+NAME         STATUS   ROLES                  AGE   VERSION
+k8s-master   Ready    control-plane,master   81m   v1.22.3
+# 在结点机器运行
+kubeadm join 192.168.199.129:6443 --token 70w5nh.u38kykr4057gt369 \
+	--discovery-token-ca-cert-hash sha256:ad6428f299fa5a190e79349a7faa20e6644d3b79e93db33c42d079fb17bb790f
+```
+> 添加的结点名称记得更改，如果你是使用的虚拟机直接复制创建，hostname 会控制节点一样，使用下面命令更改：  
+>     ```hostnamectl set-hostname k8s-node1```
+
+加入节点成功输出如下：
+```shell
+[preflight] Running pre-flight checks
+[preflight] Reading configuration from the cluster...
+[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Starting the kubelet
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+```
+
+在master结点使用 kubectl get nodes 查看情况：
+```shell
+kubectl get nodes
+NAME         STATUS     ROLES                  AGE     VERSION
+k8s-master   Ready      control-plane,master   99m     v1.22.3
+k8s-node1    NotReady   <none>                 26s     v1.22.3
+k8s-node2    NotReady   <none>                 2m11s   v1.22.3
+```
+
 如果没有令牌，可以通过在控制平面节点上运行以下命令来获取令牌：
 
 ```shell
@@ -514,6 +729,48 @@ Run 'kubectl get nodes' on control-plane to see this machine join.
 ```
 几秒钟后，当你在控制平面节点上执行 kubectl get nodes，你会注意到该节点出现在输出中。
 
+查看详细信息：
+```shell
+kubectl get pod -n kube-system -o wide
+NAME                                 READY   STATUS                  RESTARTS      AGE    IP                NODE         NOMINATED NODE   READINESS GATES
+coredns-7f6cbbb7b8-4fv72             0/1     ContainerCreating       0             119m   <none>            k8s-master   <none>           <none>
+coredns-7f6cbbb7b8-rdb26             0/1     ContainerCreating       0             119m   <none>            k8s-master   <none>           <none>
+etcd-k8s-master                      1/1     Running                 0             119m   192.168.199.129   k8s-master   <none>           <none>
+kube-apiserver-k8s-master            1/1     Running                 0             119m   192.168.199.129   k8s-master   <none>           <none>
+kube-controller-manager-k8s-master   1/1     Running                 0             119m   192.168.199.129   k8s-master   <none>           <none>
+kube-proxy-h8msq                     1/1     Running                 0             119m   192.168.199.129   k8s-master   <none>           <none>
+kube-proxy-l5szl                     1/1     Running                 1 (12m ago)   22m    192.168.199.131   k8s-node2    <none>           <none>
+kube-proxy-sr65d                     1/1     Running                 0             20m    192.168.199.130   k8s-node1    <none>           <none>
+kube-scheduler-k8s-master            1/1     Running                 0             119m   192.168.199.129   k8s-master   <none>           <none>
+weave-net-7bzz8                      0/2     Init:ImagePullBackOff   0             20m    192.168.199.130   k8s-node1    <none>           <none>
+weave-net-jdfwf                      2/2     Running                 1 (16m ago)   22m    192.168.199.131   k8s-node2    <none>           <none>
+weave-net-tg5q8                      2/2     Running                 1 (59m ago)   62m    192.168.199.129   k8s-master   <none>           <none>
+```
+看状态中，有的服务在运行，有的服务存在初始化，有的在创建，等他们创建完成，并没有发生错误，一个简单的集群就搭建好了。剩下的就可以使用集群。
+master节点安装的镜像如下：
+```shell
+docker images
+REPOSITORY                                           TAG       IMAGE ID       CREATED        SIZE
+registry.aliyuncs.com/google_containers/kube-apiserver            v1.22.3         53224b502ea4   7 days ago     128MB
+registry.aliyuncs.com/google_containers/kube-scheduler            v1.22.3         0aa9c7e31d30   7 days ago     52.7MB
+registry.aliyuncs.com/google_containers/kube-controller-manager   v1.22.3         05c905cef780   7 days ago     122MB
+registry.aliyuncs.com/google_containers/kube-proxy                v1.22.3         6120bd723dce   7 days ago     104MB
+registry.aliyuncs.com/google_containers/etcd                      3.5.0-0         004811815584   4 months ago   295MB
+registry.aliyuncs.com/google_containers/coredns                   v1.8.4          8d147537fb7d   5 months ago   47.6MB
+registry.aliyuncs.com/google_containers/pause                     3.5             ed210e3e4a5b   7 months ago   683kB
+weaveworks/weave-npc                                              2.8.1           7f92d556d4ff   9 months ago   39.3MB
+weaveworks/weave-kube                                             2.8.1           df29c0a4002c   9 months ago   89MB
+quay.io/coreos/flannel                                            v0.11.0-amd64   ff281650a721   2 years ago    52.6MB
+```
+node节点安装的镜像如下：
+```shell
+REPOSITORY                                           TAG       IMAGE ID       CREATED        SIZE
+registry.aliyuncs.com/google_containers/kube-proxy   v1.22.3   6120bd723dce   7 days ago     104MB
+registry.aliyuncs.com/google_containers/pause        3.5       ed210e3e4a5b   7 months ago   683kB
+weaveworks/weave-npc                                 2.8.1     7f92d556d4ff   9 months ago   39.3MB
+weaveworks/weave-kube                                2.8.1     df29c0a4002c   9 months ago   89MB
+
+```
 #### （可选）从控制平面节点以外的计算机控制集群
 为了使 kubectl 在其他计算机（例如笔记本电脑）上与你的集群通信， 你需要将管理员 kubeconfig 文件从控制平面节点复制到工作站，如下所示：
 
@@ -536,7 +793,9 @@ kubectl --kubeconfig ./admin.conf proxy
 
 #### 清理
 如果你在集群中使用了一次性服务器进行测试，则可以关闭这些服务器，而无需进一步清理。你可以使用 `kubectl config delete-cluster` 删除对集群的本地引用。
-
+```shell
+kubectl config delete-cluster
+```
 但是，如果要更干净地取消配置群集， 则应首先清空节点并确保该节点为空， 然后取消配置该节点。
 
 #### 删除节点
@@ -576,8 +835,403 @@ kubectl delete node <node name>
 * 配置集群如何处理集群事件的日志以及 在 Pods 中运行的应用程序。 有关所涉及内容的概述，请参见日志架构。
 
 ### 使用 kubeadm API 定制组件
+本页面介绍了如何自定义 `kubeadm` 部署的组件。 你可以使用 `ClusteConfiguration` 结构中定义的参数，或者在每个节点上应用补丁来定制控制平面组件。 你可以使用 `KubeletConfiguration` 和 `KubeProxyConfiguration` 结构分别定制 `kubelet` 和 `kube-proxy` 组件。
+
+所有这些选项都可以通过 kubeadm 配置 API 实现。 有关配置中的每个字段的详细信息，你可以导航到我们的 API 参考页面 。
+
+> 说明：  
+> kubeadm 目前不支持对 CoreDNS 部署进行定制。 你必须手动更新 kube-system/coredns ConfigMap 并在更新后重新创建 CoreDNS Pods。 或者，你可以跳过默认的 CoreDNS 部署并部署你自己的 CoreDNS 变种。 有关更多详细信息，请参阅在 kubeadm 中使用 init phases.
+
+kubeadm ClusterConfiguration 对象为用户提供了一种方法， 用以覆盖传递给控制平面组件（如 APIServer、ControllerManager、Scheduler 和 Etcd）的默认参数。 各组件配置使用如下字段定义：
+* apiServer
+* controllerManager
+* scheduler
+* etcd
+  
+
+这些结构包含一个通用的 `extraArgs` 字段，该字段由 `key: value` 组成。 要覆盖控制平面组件的参数：
+* 将适当的字段 `extraArgs` 添加到配置中。
+* 向字段 `extraArgs` 添加要覆盖的参数值。
+* 用 `--config <YOUR CONFIG YAML>` 运行 `kubeadm init`。
+
+> 说明：  
+> 你可以通过运行 `kubeadm config print init-defaults` 并将输出保存到你所选的文件中， 以默认值形式生成 `ClusterConfiguration` 对象。
+
+> 说明：  
+> ClusterConfiguration 对象目前在 kubeadm 集群中是全局的。 这意味着你添加的任何标志都将应用于同一组件在不同节点上的所有实例。 要在不同节点上为每个组件应用单独的配置，您可以使用补丁。
+
+> 说明：  
+> 当前不支持重复的参数（keys）或多次传递相同的参数 --foo。 要解决此问题，你必须使用补丁。
+#### APIServer 参数
+有关详细信息，请参阅 [kube-apiserver 参考文档](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/) 。
+
+使用示例：
+
+```properties
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.16.0
+apiServer:
+  extraArgs:
+    anonymous-auth: "false"
+    enable-admission-plugins: AlwaysPullImages,DefaultStorageClass
+    audit-log-path: /home/johndoe/audit.log
+```
+#### ControllerManager 参数
+有关详细信息，请参阅 [kube-controller-manager 参考文档](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/) 。
+
+使用示例：
+
+```properties
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.16.0
+controllerManager:
+  extraArgs:
+    cluster-signing-key-file: /home/johndoe/keys/ca.key
+    deployment-controller-sync-period: "50"
+```
+Scheduler 参数:
+
+有关详细信息，请参阅 [kube-scheduler 参考文档](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/) 。
+
+使用示例：
+
+```properties
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.16.0
+scheduler:
+  extraArgs:
+    config: /etc/kubernetes/scheduler-config.yaml
+  extraVolumes:
+    - name: schedulerconfig
+      hostPath: /home/johndoe/schedconfig.yaml
+      mountPath: /etc/kubernetes/scheduler-config.yaml
+      readOnly: true
+      pathType: "File"
+```
+
+#### Etcd 参数
+
+使用示例：
+
+```properties
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+etcd:
+  local:
+    extraArgs:
+      election-timeout: 1000
+```
+
+#### 使用补丁定制控制平面
+
+Kubeadm 允许将包含补丁文件的目录传递给各个节点上的 InitConfiguration 和 JoinConfiguration。 这些补丁可被用作控制平面组件清单写入磁盘之前的最后一个自定义步骤。
+
+可以使用 --config <你的 YAML 格式控制文件> 将配置文件传递给 kubeadm init：
+
+```properties
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+nodeRegistration:
+  patches:
+    directory: /home/user/somedir
+```
+
+> 说明：  
+> 对于 kubeadm init，你可以传递一个包含 ClusterConfiguration 和 InitConfiguration 的文件，以 --- 分隔。
+
+你可以使用 --config <你的 YAML 格式配置文件> 将配置文件传递给 kubeadm join：
+
 ### 高可用拓扑选项
+
+本页面介绍了配置高可用（HA） Kubernetes 集群拓扑的两个选项。
+
+您可以设置 HA 集群：
+* 使用堆叠（stacked）控制平面节点，其中 etcd 节点与控制平面节点共存
+* 使用外部 etcd 节点，其中 etcd 在与控制平面不同的节点上运行
+
+在设置 HA 集群之前，您应该仔细考虑每种拓扑的优缺点。
+
+#### 堆叠（Stacked） etcd 拓扑
+堆叠（Stacked） HA 集群是一种这样的拓扑，其中 etcd 分布式数据存储集群堆叠在 kubeadm 管理的控制平面节点上，作为控制平面的一个组件运行。
+
+每个控制平面节点运行 `kube-apiserver`，`kube-scheduler` 和 `kube-controller-manager` 实例。
+
+`kube-apiserver` 使用负载均衡器暴露给工作节点。
+
+每个控制平面节点创建一个本地 etcd 成员（member），这个 etcd 成员只与该节点的 kube-apiserver 通信。这同样适用于本地 `kube-controller-manager` 和 `kube-scheduler` 实例。
+
+这种拓扑将控制平面和 etcd 成员耦合在同一节点上。相对使用外部 etcd 集群，设置起来更简单，而且更易于副本管理。
+
+然而，堆叠集群存在耦合失败的风险。如果一个节点发生故障，则 etcd 成员和控制平面实例都将丢失，并且冗余会受到影响。您可以通过添加更多控制平面节点来降低此风险。
+
+因此，您应该为 HA 集群运行至少三个堆叠的控制平面节点。
+
+这是 kubeadm 中的默认拓扑。当使用 `kubeadm init` 和 `kubeadm join --control-plane` 时，在控制平面节点上会自动创建本地 etcd 成员。
+
+![pc5](https://gitee.com/fredomli/fredomli-picture/raw/picgo/static/images/wordpress/kubeadm-ha-topology-stacked-etcd.svg)
+
+#### 外部 etcd 拓扑
+
+具有外部 etcd 的 HA 集群是一种这样的拓扑，其中 etcd 分布式数据存储集群在独立于控制平面节点的其他节点上运行。
+
+就像堆叠的 etcd 拓扑一样，外部 etcd 拓扑中的每个控制平面节点都运行 `kube-apiserver`，`kube-scheduler` 和 `kube-controller-manager` 实例。同样， `kube-apiserver` 使用负载均衡器暴露给工作节点。但是，etcd 成员在不同的主机上运行，每个 etcd 主机与每个控制平面节点的 `kube-apiserver` 通信。
+
+这种拓扑结构解耦了控制平面和 etcd 成员。因此，它提供了一种 HA 设置，其中失去控制平面实例或者 etcd 成员的影响较小，并且不会像堆叠的 HA 拓扑那样影响集群冗余。
+
+但是，此拓扑需要两倍于堆叠 HA 拓扑的主机数量。
+
+具有此拓扑的 HA 集群至少需要三个用于控制平面节点的主机和三个用于 etcd 节点的主机。
+
+![pc6](https://gitee.com/fredomli/fredomli-picture/raw/picgo/static/images/wordpress/kubeadm-ha-topology-external-etcd.svg)
+
 ### 利用 kubeadm 创建高可用集群
+本文讲述了使用 kubeadm 设置一个高可用的 Kubernetes 集群的两种不同方式：
+
+* 使用具有堆叠的控制平面节点。这种方法所需基础设施较少。etcd 成员和控制平面节点位于同一位置。
+* 使用外部集群。这种方法所需基础设施较多。控制平面的节点和 etcd 成员是分开的。
+  
+在下一步之前，你应该仔细考虑哪种方法更好的满足你的应用程序和环境的需求。 这是[对比文档](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/ha-topology/) 讲述了每种方法的优缺点。
+
+这篇文档没有讲述在云提供商上运行集群的问题。在云环境中，此处记录的方法不适用于类型为 LoadBalancer 的服务对象，或者具有动态的 PersistentVolumes。
+
+#### 准备开始  
+对于这两种方法，你都需要以下基础设施：
+* 配置满足 kubeadm 的最低要求 的三台机器作为控制面节点
+* 配置满足 kubeadm 的最低要求 的三台机器作为工作节点
+* 在集群中，确保所有计算机之间存在全网络连接（公网或私网）
+* 在所有机器上具有 sudo 权限
+* 从某台设备通过 SSH 访问系统中所有节点的能力
+* 所有机器上已经安装 kubeadm 和 kubelet，kubectl 是可选的。
+  
+仅对于外部 etcd 集群来说，你还需要：
+* 给 etcd 成员使用的另外三台机器
+
+#### 这两种方法的第一步
+##### 为 kube-apiserver 创建负载均衡器
+> *说明：*  
+> 使用负载均衡器需要许多配置。你的集群搭建可能需要不同的配置。 下面的例子只是其中的一方面配置。
+
+##### 1. 创建一个名为 kube-apiserver 的负载均衡器解析 DNS。 
+
+* 在云环境中，应该将控制平面节点放置在 TCP 后面转发负载平衡。该负载均衡器将流量分配给目标列表中所有运行状况良好的控制平面节点。 API 服务器的健康检查是在 kube-apiserver 的监听端口（默认值 :6443） 上进行的一个 TCP 检查。
+* 不建议在云环境中直接使用 IP 地址。
+* 负载均衡器必须能够在 API 服务器端口上与所有控制平面节点通信。 它还必须允许其监听端口的入站流量。
+* 确保负载均衡器的地址始终匹配 kubeadm 的 ControlPlaneEndpoint 地址。
+
+##### 2. 添加第一个控制平面节点到负载均衡器并测试连接：
+```shell
+nc -v LOAD_BALANCER_IP PORT
+```
+* 由于 apiserver 尚未运行，预期会出现一个连接拒绝错误。 然而超时意味着负载均衡器不能和控制平面节点通信。 如果发生超时，请重新配置负载均衡器与控制平面节点进行通信。
+
+##### 3. 将其余控制平面节点添加到负载均衡器目标组。
+
+#### 使用堆控制平面和 etcd 节点
+##### 1. 控制平面节点的第一步
+初始化控制平面：
+```shell
+sudo kubeadm init --control-plane-endpoint "LOAD_BALANCER_DNS:LOAD_BALANCER_PORT" --upload-certs
+```
+* 你可以使用 `--kubernetes-version` 标志来设置要使用的 `Kubernetes` 版本。建议将 `kubeadm`、`kebelet`、`kubectl` 和 `Kubernetes` 的版本匹配。
+* 这个 `--control-plane-endpoint` 标志应该被设置成负载均衡器的地址或 DNS 和端口。
+* 这个 `--upload-certs` 标志用来将在所有控制平面实例之间的共享证书上传到集群。 如果正好相反，你更喜欢手动地通过控制平面节点或者使用自动化 工具复制证书，请删除此标志并参考如下部分证书分配手册。
+
+> 说明：  
+> 标志 `kubeadm init`、`--config` 和 `--certificate-key` 不能混合使用，
+> 因此如果你要使用
+> [kubeadm 配置](/docs/reference/config-api/kubeadm-config.v1beta3/)，你必须在相应的配置文件
+> （位于 `InitConfiguration` 和 `JoinConfiguration: controlPlane`）添加 `certificateKey` 字段。
+
+> 说明：  
+> 一些 CNI 网络插件如 Calico 需要 CIDR 例如 `192.168.0.0/16` 和一些像 Weave 没有。参考
+> [CNI 网络文档](/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network)。
+> 通过传递 `--pod-network-cidr` 标志添加 pod CIDR，或者你可以使用 kubeadm
+> 配置文件，在 `ClusterConfiguration` 的 `networking` 对象下设置 `podSubnet` 字段。
+
+输出类似于：
+```
+You can now join any number of control-plane node by running the following command on each as a root:
+kubeadm join 192.168.0.200:6443 --token 9vr73a.a8uxyaju799qwdjv --discovery-token-ca-cert-hash sha256:7c2e69131a36ae2a042a339b33381c6d0d43887e2de83720eff5359e26aec866 --control-plane --certificate-key f8902e114ef118304e561c3ecd4d0b543adc226b7a07f675f56564185ffe0c07
+
+Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
+As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use kubeadm init phase upload-certs to reload certs afterward.
+
+Then you can join any number of worker nodes by running the following on each as root:
+  kubeadm join 192.168.0.200:6443 --token 9vr73a.a8uxyaju799qwdjv --discovery-token-ca-cert-hash sha256:7c2e69131a36ae2a042a339b33381c6d0d43887e2de83720eff5359e26aec866
+```
+将此输出复制到文本文件。 稍后你将需要它来将控制平面节点和工作节点加入集群。
+
+当 `--upload-certs` 与 `kubeadm init` 一起使用时，主控制平面的证书 被加密并上传到 `kubeadm-certs` Secret 中。
+
+要重新上传证书并生成新的解密密钥，请在已加入集群节点的控制平面上使用以下命令：
+
+```shell
+sudo kubeadm init phase upload-certs --upload-certs
+```
+你还可以在 `init` 期间指定自定义的 `--certificate-key`，以后可以由 `join` 使用。 要生成这样的密钥，可以使用以下命令：
+
+```shell
+kubeadm certs certificate-key
+```
+> 说明：`kubeadm-certs` 密钥和解密密钥会在两个小时后失效。
+
+> 注意：正如命令输出中所述，证书密钥可访问群集敏感数据。请妥善保管！
+
+应用你所选择的 CNI 插件： 请遵循以下指示 安装 CNI 提供程序。如果适用，请确保配置与 kubeadm 配置文件中指定的 Pod CIDR 相对应。
+
+在此示例中，我们使用 Weave Net：
+
+```shell
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+```
+
+输入以下内容，并查看控制平面组件的 Pods 启动：
+
+```shell
+kubectl get pod -n kube-system -w
+```
+
+##### 2. 其余控制平面节点的步骤
+
+> 说明：从 kubeadm 1.15 版本开始，你可以并行加入多个控制平面节点。 在此版本之前，你必须在第一个节点初始化后才能依序的增加新的控制平面节点。
+
+对于每个其他控制平面节点，你应该：  
+执行先前由第一个节点上的 kubeadm init 输出提供给你的 join 命令。 它看起来应该像这样：
+
+```shell
+sudo kubeadm join 192.168.0.200:6443 --token 9vr73a.a8uxyaju799qwdjv --discovery-token-ca-cert-hash sha256:7c2e69131a36ae2a042a339b33381c6d0d43887e2de83720eff5359e26aec866 --control-plane --certificate-key f8902e114ef118304e561c3ecd4d0b543adc226b7a07f675f56564185ffe0c07
+```
+
+这个 `--control-plane` 命令通知 `kubeadm join` 创建一个新的控制平面。  
+`--certificate-key ...` 将导致从集群中的 `kubeadm-certs` Secret 下载 控制平面证书并使用给定的密钥进行解密。
+#### 外部 etcd 节点
+使用外部 etcd 节点设置集群类似于用于堆叠 etcd 的过程， 不同之处在于你应该首先设置 etcd，并在 kubeadm 配置文件中传递 etcd 信息。
+##### 设置 ectd 集群
+* 按照 这些指示 去设置 etcd 集群。
+* 根据这里的描述配置 SSH。
+* 将以下文件从集群中的任何 etcd 节点复制到第一个控制平面节点：
+```shell
+export CONTROL_PLANE="ubuntu@10.0.0.7"
+scp /etc/kubernetes/pki/etcd/ca.crt "${CONTROL_PLANE}":
+scp /etc/kubernetes/pki/apiserver-etcd-client.crt "${CONTROL_PLANE}":
+scp /etc/kubernetes/pki/apiserver-etcd-client.key "${CONTROL_PLANE}":
+```
+> 用第一台控制平面机的 user@host 替换 CONTROL_PLANE 的值。
+
+##### 设置第一个控制平面节点
+用以下内容创建一个名为 kubeadm-config.yaml 的文件：
+```properties
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "LOAD_BALANCER_DNS:LOAD_BALANCER_PORT"
+etcd:
+    external:
+        endpoints:
+        - https://ETCD_0_IP:2379
+        - https://ETCD_1_IP:2379
+        - https://ETCD_2_IP:2379
+        caFile: /etc/kubernetes/pki/etcd/ca.crt
+        certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+        keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
+```
+
+```text
+这里的内部（stacked） etcd 和外部 etcd 之前的区别在于设置外部 etcd
+需要一个 `etcd` 的 `external` 对象下带有 etcd 端点的配置文件。
+如果是内部 etcd，是自动管理的。
+```
+在你的集群中，将配置模板中的以下变量替换为适当值：
+
+* LOAD_BALANCER_DNS
+* LOAD_BALANCER_PORT
+* ETCD_0_IP
+* ETCD_1_IP
+* ETCD_2_IP
+
+以下的步骤与设置内置 etcd 的集群是相似的：
+
+* 在节点上运行 sudo kubeadm init --config kubeadm-config.yaml --upload-certs 命令。
+* 记下输出的 join 命令，这些命令将在以后使用。
+* 应用你选择的 CNI 插件。以下示例适用于 Weave Net：
+```text
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+```
+其他控制平面节点的步骤
+* 确保第一个控制平面节点已完全初始化。
+* 使用保存到文本文件的 join 命令将每个控制平面节点连接在一起。 建议一次加入一个控制平面节点。
+* 不要忘记默认情况下，`--certificate-key` 中的解密秘钥会在两个小时后过期。
+
+#### 列举控制平面之后的常见任务
+安装工作节点, 你可以使用之前存储的 `kubeadm init` 命令的输出将工作节点加入集群中：
+
+```shell
+sudo kubeadm join 192.168.0.200:6443 --token 9vr73a.a8uxyaju799qwdjv --discovery-token-ca-cert-hash sha256:7c2e69131a36ae2a042a339b33381c6d0d43887e2de83720eff5359e26aec866
+```
+
+#### 手动证书分发
+##### 手动证书分发
+如果你选择不将 `kubeadm init` 与 `--upload-certs` 命令一起使用， 则意味着你将必须手动将证书从主控制平面节点复制到 将要加入的控制平面节点上。
+
+有许多方法可以实现这种操作。在下面的例子中我们使用 ssh 和 scp：
+
+如果要在单独的一台计算机控制所有节点，则需要 SSH。
+
+1. 在你的主设备上启用 ssh-agent，要求该设备能访问系统中的所有其他节点： 
+    ```shell
+    eval $(ssh-agent)
+    ```
+2. 将 SSH 身份添加到会话中：
+    ```shell
+    ssh-add ~/.ssh/path_to_private_key
+    ```
+3. 检查节点间的 SSH 以确保连接是正常运行的
+
+    SSH 到任何节点时，请确保添加 -A 标志：
+    ```shell
+    ssh -A 10.0.0.7
+    ```
+    当在任何节点上使用 sudo 时，请确保保持环境变量设置，以便 SSH 转发能够正常工作：
+    ```shell
+    sudo -E -s
+    ```
+4. 在所有节点上配置 SSH 之后，你应该在运行过 kubeadm init 命令的第一个 控制平面节点上运行以下脚本。 该脚本会将证书从第一个控制平面节点复制到另一个控制平面节点：
+   在以下示例中，用其他控制平面节点的 IP 地址替换 CONTROL_PLANE_IPS。
+   ```shell
+    USER=ubuntu # 可定制
+    CONTROL_PLANE_IPS="10.0.0.7 10.0.0.8"
+    for host in ${CONTROL_PLANE_IPS}; do
+    scp /etc/kubernetes/pki/ca.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/ca.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/sa.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/sa.pub "${USER}"@$host:
+    scp /etc/kubernetes/pki/front-proxy-ca.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/front-proxy-ca.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/etcd/ca.crt "${USER}"@$host:etcd-ca.crt
+    scp /etc/kubernetes/pki/etcd/ca.key "${USER}"@$host:etcd-ca.key
+    done
+    ```
+    注意：
+    只需要复制上面列表中的证书。kubeadm 将负责生成其余证书以及加入控制平面实例所需的 SAN。 如果你错误地复制了所有证书，由于缺少所需的 SAN，创建其他节点可能会失败。
+
+5. 然后，在每个即将加入集群的控制平面节点上，你必须先运行以下脚本，然后 再运行 kubeadm join。 该脚本会将先前复制的证书从主目录移动到 `/etc/kubernetes/pki`：
+
+    ```shell
+    USER=ubuntu # 可定制
+    mkdir -p /etc/kubernetes/pki/etcd
+    mv /home/${USER}/ca.crt /etc/kubernetes/pki/
+    mv /home/${USER}/ca.key /etc/kubernetes/pki/
+    mv /home/${USER}/sa.pub /etc/kubernetes/pki/
+    mv /home/${USER}/sa.key /etc/kubernetes/pki/
+    mv /home/${USER}/front-proxy-ca.crt /etc/kubernetes/pki/
+    mv /home/${USER}/front-proxy-ca.key /etc/kubernetes/pki/
+    mv /home/${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
+    mv /home/${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
+    ```
+
 ### 使用 kubeadm 创建一个高可用 etcd 集群
 ### 使用 kubeadm 配置集群中的每个 kubelet
 
