@@ -1575,5 +1575,5 @@ Kubernetes 版本对应的 DEB 和 RPM 软件包是：
 * [交互式教程-部署应用程序](https://kubernetes.io/docs/tutorials/kubernetes-basics/deploy-app/deploy-interactive/)
 * [交互式教程-探索你的应用](https://kubernetes.io/docs/tutorials/kubernetes-basics/explore/explore-interactive/)
 * [Kubernetes 中文网](https://kubernetes.io/zh/docs/tutorials/kubernetes-basics/)
-``
+
 *(☞ﾟヮﾟ)☞[返回首页README.md address](https://github.com/fredomli/java-standard)*
