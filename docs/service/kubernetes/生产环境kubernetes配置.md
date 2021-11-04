@@ -1233,7 +1233,338 @@ sudo kubeadm join 192.168.0.200:6443 --token 9vr73a.a8uxyaju799qwdjv --discovery
     ```
 
 ### 使用 kubeadm 创建一个高可用 etcd 集群
+
+> 说明：  
+> 在本指南中，当 kubeadm 用作为外部 etcd 节点管理工具，请注意 kubeadm 不计划支持此类节点的证书更换或升级。对于长期规划是使用 etcdadm 增强工具来管理这方面。
+
+默认情况下，kubeadm 运行单成员的 etcd 集群，该集群由控制面节点上的 kubelet 以静态 Pod 的方式进行管理。由于 etcd 集群只包含一个成员且不能在任一成员不可用时保持运行，所以这不是一种高可用设置。本任务，将告诉你如何在使用 kubeadm 创建一个 kubernetes 集群时创建一个外部 etcd：有三个成员的高可用 etcd 集群。
+
+#### 准备开始
+* 三个可以通过 `2379` 和 `2380` 端口相互通信的主机。本文档使用这些作为默认端口。不过，它们可以通过 kubeadm 的配置文件进行自定义。
+* 每个主机必须 安装有 docker、kubelet 和 kubeadm。
+* 一些可以用来在主机间复制文件的基础设施。例如 ssh 和 scp 就可以满足需求。
+
+#### 建立集群
+一般来说，是在一个节点上生成所有证书并且只分发这些必要的文件到其它节点上。
+> kubeadm 包含生成下述证书所需的所有必要的密码学工具；在这个例子中，不需要其他加密工具。
+
+将 kubelet 配置为 etcd 的服务管理器。
+> 你必须在要运行 etcd 的所有主机上执行此操作。
+
+由于 etcd 是首先创建的，因此你必须通过创建具有更高优先级的新文件来覆盖 kubeadm 提供的 kubelet 单元文件。
+
+```shell
+cat << EOF > /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf
+[Service]
+ExecStart=
+# 将下面的 "systemd" 替换为你的容器运行时所使用的 cgroup 驱动。
+# kubelet 的默认值为 "cgroupfs"。
+ExecStart=/usr/bin/kubelet --address=127.0.0.1 --pod-manifest-path=/etc/kubernetes/manifests --cgroup-driver=systemd
+Restart=always
+EOF
+
+systemctl daemon-reload
+systemctl restart kubelet
+```
+检查 kubelet 的状态以确保其处于运行状态：
+
+```shell
+systemctl status kubelet
+```
+
+为 kubeadm 创建配置文件。
+
+```shell
+# 使用 IP 或可解析的主机名替换 HOST0、HOST1 和 HOST2
+export HOST0=10.0.0.6
+export HOST1=10.0.0.7
+export HOST2=10.0.0.8
+
+# 创建临时目录来存储将被分发到其它主机上的文件
+mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
+
+ETCDHOSTS=(${HOST0} ${HOST1} ${HOST2})
+NAMES=("infra0" "infra1" "infra2")
+
+for i in "${!ETCDHOSTS[@]}"; do
+HOST=${ETCDHOSTS[$i]}
+NAME=${NAMES[$i]}
+cat << EOF > /tmp/${HOST}/kubeadmcfg.yaml
+apiVersion: "kubeadm.k8s.io/v1beta3"
+kind: ClusterConfiguration
+etcd:
+    local:
+        serverCertSANs:
+        - "${HOST}"
+        peerCertSANs:
+        - "${HOST}"
+        extraArgs:
+            initial-cluster: infra0=https://${ETCDHOSTS[0]}:2380,infra1=https://${ETCDHOSTS[1]}:2380,infra2=https://${ETCDHOSTS[2]}:2380
+            initial-cluster-state: new
+            name: ${NAME}
+            listen-peer-urls: https://${HOST}:2380
+            listen-client-urls: https://${HOST}:2379
+            advertise-client-urls: https://${HOST}:2379
+            initial-advertise-peer-urls: https://${HOST}:2380
+EOF
+done
+```
+生成证书颁发机构：
+
+如果你已经拥有 CA，那么唯一的操作是复制 CA 的 crt 和 key 文件到，`etc/kubernetes/pki/etcd/ca.crt` 和 `/etc/kubernetes/pki/etcd/ca.key`。复制完这些文件后继续下一步，“为每个成员创建证书”。
+
+如果你还没有 CA，则在 `$HOST0`（你为 kubeadm 生成配置文件的位置）上运行此命令。
+
+```shell
+kubeadm init phase certs etcd-ca
+```
+
+这一操作创建如下两个文件：
+
+```
+/etc/kubernetes/pki/etcd/ca.crt
+
+/etc/kubernetes/pki/etcd/ca.key
+```
+为每个成员创建证书：
+```shell
+kubeadm init phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST2}/
+# 清理不可重复使用的证书
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+kubeadm init phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST1}/
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+kubeadm init phase certs etcd-server --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+# 不需要移动 certs 因为它们是给 HOST0 使用的
+
+# 清理不应从此主机复制的证书
+find /tmp/${HOST2} -name ca.key -type f -delete
+find /tmp/${HOST1} -name ca.key -type f -delete
+```
+复制证书和 kubeadm 配置：
+
+证书已生成，现在必须将它们移动到对应的主机。
+```shell
+USER=ubuntu
+HOST=${HOST1}
+scp -r /tmp/${HOST}/* ${USER}@${HOST}:
+ssh ${USER}@${HOST}
+USER@HOST $ sudo -Es
+root@HOST $ chown -R root:root pki
+root@HOST $ mv pki /etc/kubernetes/
+```
+
+确保已经所有预期的文件都存在
+
+$HOST0 所需文件的完整列表如下：
+```text
+/tmp/${HOST0}
+└── kubeadmcfg.yaml
+---
+/etc/kubernetes/pki
+├── apiserver-etcd-client.crt
+├── apiserver-etcd-client.key
+└── etcd
+    ├── ca.crt
+    ├── ca.key
+    ├── healthcheck-client.crt
+    ├── healthcheck-client.key
+    ├── peer.crt
+    ├── peer.key
+    ├── server.crt
+    └── server.key
+```
+在 $HOST1 上：
+
+```text
+$HOME
+└── kubeadmcfg.yaml
+---
+/etc/kubernetes/pki
+├── apiserver-etcd-client.crt
+├── apiserver-etcd-client.key
+└── etcd
+    ├── ca.crt
+    ├── healthcheck-client.crt
+    ├── healthcheck-client.key
+    ├── peer.crt
+    ├── peer.key
+    ├── server.crt
+    └── server.key
+```
+在 $HOST2 上：
+```text
+$HOME
+└── kubeadmcfg.yaml
+---
+/etc/kubernetes/pki
+├── apiserver-etcd-client.crt
+├── apiserver-etcd-client.key
+└── etcd
+    ├── ca.crt
+    ├── healthcheck-client.crt
+    ├── healthcheck-client.key
+    ├── peer.crt
+    ├── peer.key
+    ├── server.crt
+    └── server.key
+```
+创建静态 Pod 清单
+
+既然证书和配置已经就绪，是时候去创建清单了。 在每台主机上运行 kubeadm 命令来生成 etcd 使用的静态清单。
+
+```shell
+root@HOST0 $ kubeadm init phase etcd local --config=/tmp/${HOST0}/kubeadmcfg.yaml
+root@HOST1 $ kubeadm init phase etcd local --config=/tmp/${HOST1}/kubeadmcfg.yaml
+root@HOST2 $ kubeadm init phase etcd local --config=/tmp/${HOST2}/kubeadmcfg.yaml
+```
+
+可选：检查群集运行状况
+
+```shell
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes k8s.gcr.io/etcd:${ETCD_TAG} etcdctl \
+--cert /etc/kubernetes/pki/etcd/peer.crt \
+--key /etc/kubernetes/pki/etcd/peer.key \
+--cacert /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://${HOST0}:2379 endpoint health --cluster
+...
+https://[HOST0 IP]:2379 is healthy: successfully committed proposal: took = 16.283339ms
+https://[HOST1 IP]:2379 is healthy: successfully committed proposal: took = 19.44402ms
+https://[HOST2 IP]:2379 is healthy: successfully committed proposal: took = 35.926451ms
+```
+将 ${ETCD_TAG} 设置为你的 etcd 镜像的版本标签，例如 3.4.3-0。 要查看 kubeadm 使用的 etcd 镜像和标签，请执行 kubeadm config images list --kubernetes-version ${K8S_VERSION}，例如，其中的 ${K8S_VERSION} 可以是 v1.17.0。
+
+将 ${HOST0} 设置为要测试的主机的 IP 地址。
+
 ### 使用 kubeadm 配置集群中的每个 kubelet
+
+kubeadm CLI 工具的生命周期与 kubelet 解耦；kubelet 是一个守护程序，在 Kubernetes 集群中的每个节点上运行。 当 Kubernetes 初始化或升级时，kubeadm CLI 工具由用户执行，而 kubelet 始终在后台运行。
+
+由于kubelet是守护程序，因此需要通过某种初始化系统或服务管理器进行维护。 当使用 DEB 或 RPM 安装 kubelet 时，配置系统去管理 kubelet。 你可以改用其他服务管理器，但需要手动地配置。
+
+集群中涉及的所有 kubelet 的一些配置细节都必须相同， 而其他配置方面则需要基于每个 kubelet 进行设置，以适应给定机器的不同特性（例如操作系统、存储和网络）。 你可以手动地管理 kubelet 的配置，但是 kubeadm 现在提供一种 `KubeletConfiguration` API 类型 用于[集中管理 kubelet 的配置](https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/kubelet-integration/#configure-kubelets-using-kubeadm) 。
+
+#### Kubelet 配置模式
+以下各节讲述了通过使用 kubeadm 简化 kubelet 配置模式，而不是在每个节点上手动地管理 kubelet 配置。
+
+##### 将集群级配置传播到每个 kubelet 中
+
+你可以通过使用 `kubeadm init` 和 `kubeadm join` 命令为 kubelet 提供默认值。 有趣的示例包括使用其他 CRI 运行时或通过服务器设置不同的默认子网。
+
+如果你想使用子网 `10.96.0.0/12` 作为services的默认网段，你可以给 kubeadm 传递 `--service-cidr` 参数：
+
+```shell
+kubeadm init --service-cidr 10.96.0.0/12
+```
+
+现在，可以从该子网分配服务的虚拟 IP。 你还需要通过 kubelet 使用 `--cluster-dns` 标志设置 DNS 地址。在集群中的每个管理器和节点上的 kubelet 的设置需要相同。 kubelet 提供了一个版本化的结构化 API 对象，该对象可以配置 kubelet 中的大多数参数，并将此配置推送到集群中正在运行的每个 kubelet 上。 此对象被称为 KubeletConfiguration。 KubeletConfiguration 允许用户指定标志，例如用骆峰值代表集群的 DNS IP 地址，如下所示：
+
+##### 提供指定实例的详细配置信息
+由于硬件、操作系统、网络或者其他主机特定参数的差异。某些主机需要特定的 kubelet 配置。 以下列表提供了一些示例。
+
+* 由 kubelet 配置标志 --resolv-conf 指定的 DNS 解析文件的路径在操作系统之间可能有所不同， 它取决于你是否使用 systemd-resolved。 如果此路径错误，则在其 kubelet 配置错误的节点上 DNS 解析也将失败。
+
+* 除非你使用云驱动，否则默认情况下 Node API 对象的 .metadata.name 会被设置为计算机的主机名。 如果你需要指定一个与机器的主机名不同的节点名称，你可以使用 --hostname-override 标志覆盖默认值。
+
+* 当前，kubelet 无法自动检测 CRI 运行时使用的 cgroup 驱动程序， 但是值 --cgroup-driver 必须与 CRI 运行时使用的 cgroup 驱动程序匹配，以确保 kubelet 的健康运行状况。
+
+* 取决于你的集群所使用的 CRI 运行时，你可能需要为 kubelet 指定不同的标志。 例如，当使用 Docker 时，你需要指定如 --network-plugin=cni 这类标志；但是如果你使用的是外部运行时， 则需要指定 --container-runtime=remote 并使用 --container-runtime-endpoint=<path> 指定 CRI 端点。
+
+你可以在服务管理器（例如 systemd）中设定某个 kubelet 的配置来指定这些参数。
+
+#### 使用 kubeadm 配置 kubelet
+
+如果自定义的 `KubeletConfiguration` API 对象使用像 `kubeadm ... --config some-config-file.yaml` 这样的配置文件进行传递，则可以配置 kubeadm 启动的 kubelet。
+
+通过调用 `kubeadm config print init-defaults --component-configs KubeletConfiguration`， 你可以看到此结构中的所有默认值。
+
+##### 当使用 kubeadm init时的工作流程
+当调用 kubeadm init 时，kubelet 配置被编组到磁盘上的 `/var/lib/kubelet/config.yaml` 中， 并且上传到集群中的 ConfigMap。 ConfigMap 名为 kubelet-config-1.X，其中 X 是你正在初始化的 kubernetes 版本的次版本。 在集群中所有 kubelet 的基准集群范围内配置，将 kubelet 配置文件写入`/etc/kubernetes/kubelet.conf` 中。此配置文件指向允许 kubelet 与 API 服务器通信的客户端证书。 这解决了将集群级配置传播到每个 kubelet 的需求。
+
+```shell
+cat /var/lib/kubelet/config.yaml
+
+cat /etc/kubernetes/kubelet.conf
+```
+该文档 提供特定实例的配置详细信息 是第二种解决模式， kubeadm 将环境文件写入 `/var/lib/kubelet/kubeadm-flags.env`，其中包含了一个标志列表， 当 kubelet 启动时，该标志列表会传递给 kubelet 标志在文件中的显示方式如下：
+
+```shell
+KUBELET_KUBEADM_ARGS="--network-plugin=cni --pod-infra-container-image=registry.aliyuncs.com/google_containers/pause:3.5"
+```
+
+除了启动 kubelet 时使用该标志外，该文件还包含动态参数，例如 cgroup 驱动程序以及是否使用其他 CRI 运行时 socket（`--cri-socket`）。
+
+将这两个文件编组到磁盘后，如果使用 systemd，则 kubeadm 尝试运行以下两个命令：
+
+```shell
+systemctl daemon-reload && systemctl restart kubelet
+```
+如果重新加载和重新启动成功，则正常的 kubeadm init 工作流程将继续。
+
+##### 当使用 kubeadm join时的工作流程
+当运行 `kubeadm join` 时，kubeadm 使用 Bootstrap Token 证书执行 TLS 引导，该引导会获取一份证书，该证书需要下载 `kubelet-config-1.X` ConfigMap 并把它写入 `/var/lib/kubelet/config.yaml` 中。 动态环境文件的生成方式恰好与 kubeadm init 相同。
+
+接下来，kubeadm 运行以下两个命令将新配置加载到 kubelet 中：
+
+```shell
+systemctl daemon-reload && systemctl restart kubelet
+```
+在 kubelet 加载新配置后，kubeadm 将写入 `/etc/kubernetes/bootstrap-kubelet.conf` KubeConfig 文件中， 该文件包含 CA 证书和引导程序令牌。 kubelet 使用这些证书执行 TLS 引导程序并获取唯一的凭据，该凭据被存储在 `/etc/kubernetes/kubelet.conf` 中。 当此文件被写入后，kubelet 就完成了执行 TLS 引导程序。
+```shell
+cat /etc/kubernetes/bootstrap-kubelet.conf
+```
+#### kubelet 的 systemd 文件
+
+`kubeadm` 中附带了有关系统如何运行 `kubelet` 的 `systemd` 配置文件。 请注意 kubeadm CLI 命令不会修改此文件。
+
+通过 `kubeadm` DEB 或者 RPM 包 安装的配置文件被写入 `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf` 并由系统使用。 它对原来的 RPM 版本 `kubelet.service` 或者 DEB 版本 `kubelet.service` 作了增强：
+
+```shell
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf
+--kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+# 这是 "kubeadm init" 和 "kubeadm join" 运行时生成的文件，动态地填充 KUBELET_KUBEADM_ARGS 变量
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# 这是一个文件，用户在不得已下可以将其用作替代 kubelet args。
+# 用户最好使用 .NodeRegistration.KubeletExtraArgs 对象在配置文件中替代。
+# KUBELET_EXTRA_ARGS 应该从此文件中获取。
+EnvironmentFile=-/etc/default/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+```
+该文件为 kubelet 指定由 kubeadm 管理的所有文件的默认位置。
+
+* 用于 TLS 引导程序的 KubeConfig 文件为 /etc/kubernetes/bootstrap-kubelet.conf， 但仅当 /etc/kubernetes/kubelet.conf 不存在时才能使用。
+* 具有唯一 kubelet 标识的 KubeConfig 文件为 /etc/kubernetes/kubelet.conf。
+* 包含 kubelet 的组件配置的文件为 /var/lib/kubelet/config.yaml。
+* 包含的动态环境的文件 KUBELET_KUBEADM_ARGS 是来源于 /var/lib/kubelet/kubeadm-flags.env。
+* 包含用户指定标志替代的文件 KUBELET_EXTRA_ARGS 是来源于 /etc/default/kubelet（对于 DEB），或者 /etc/sysconfig/kubelet（对于 RPM）。 KUBELET_EXTRA_ARGS 在标志链中排在最后，并且在设置冲突时具有最高优先级。
+
+##### Kubernetes 可执行文件和软件包内容
+
+Kubernetes 版本对应的 DEB 和 RPM 软件包是：
+
+|Package name|	Description|
+|---|---|
+|kubeadm	|给 kubelet 安装 /usr/bin/kubeadm CLI 工具和 kubelet 的 systemd 文件。|
+|kubelet	|安装 kubelet 可执行文件到 /usr/bin 路径，安装 CNI 可执行文件到 /opt/cni/bin 路径。|
+|kubectl	|安装 /usr/bin/kubectl 可执行文件。|
+|cri-tools|	从 cri-tools git 仓库中安装 /usr/bin/crictl 可执行文件。|
 
 ## 参考
 * [官网地址](https://kubernetes.io/)
