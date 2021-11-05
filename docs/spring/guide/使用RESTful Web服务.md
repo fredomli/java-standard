@@ -14,6 +14,8 @@
 ### 创建一个项目
 创建一个Spring Boot项目(其他项目也是可以的，只要你能够学习到相关技术)，可以使用 `Spring Initializr`，`IDEA`，`Spring STS`等来创建你的项目。
 
+源码：```git clone https://github.com/spring-guides/gs-consuming-rest.git```
+
 ### 获取REST资源
 
 项目设置完成后，您可以创建一个使用RESTful服务的简单应用程序。
